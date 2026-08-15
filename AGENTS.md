@@ -17,10 +17,12 @@ identifiers, code comments, commit messages, and diagnostic output in English.
 
 Treat [platformio.ini](platformio.ini) as the source of truth for the build contract:
 
+- Default environment: `m5stack-cardputer`
 - Environment: `m5stack-cardputer`
 - Platform: `espressif32@6.7.0`
 - Board: `esp32-s3-devkitc-1` (8 MB flash)
 - Framework: Arduino
+- Language standard: C++17 with `-std=gnu++17`
 - Hardware library: `M5Cardputer`
 - Serial speed: `115200`
 - Upload speed: `1500000`
