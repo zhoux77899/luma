@@ -1,0 +1,261 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  native-tests:
+    name: Native tests
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Cache PlatformIO downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio/.cache
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install PlatformIO
+        run: python -m pip install -r requirements.txt
+
+      - name: Add MinGW toolchain to PATH
+        shell: pwsh
+        run: |
+          $toolchainBin = Join-Path $env:USERPROFILE ".platformio\packages\toolchain-gccmingw32\bin"
+          $toolchainBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Run native tests
+        run: pio test -e native
+
+  build-release:
+    name: Build release assets
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Cache PlatformIO downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio/.cache
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install PlatformIO
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate release tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Unsupported release tag: ${tag}"
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Cardputer firmware
+        env:
+          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ steps.version.outputs.version }}\"'
+        run: pio run -e m5stack-cardputer
+
+      - name: Build LittleFS image
+        env:
+          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ steps.version.outputs.version }}\"'
+        run: pio run -e m5stack-cardputer --target buildfs
+
+      - name: Package firmware assets
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          STAGING_DIR: ${{ github.workspace }}/release-staging
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_dir="${GITHUB_WORKSPACE}/.pio/build/m5stack-cardputer"
+          staging_dir="${GITHUB_WORKSPACE}/release-staging"
+          release_dir="${GITHUB_WORKSPACE}/release-assets"
+          merged_name="luma-cardputer-${RELEASE_TAG}-merged.bin"
+          archive_name="luma-cardputer-${RELEASE_TAG}-flash.zip"
+
+          rm -rf "${staging_dir}" "${release_dir}"
+          mkdir -p "${staging_dir}" "${release_dir}"
+
+          for image in bootloader.bin partitions.bin firmware.bin littlefs.bin; do
+            source="${build_dir}/${image}"
+            test -s "${source}"
+            cp "${source}" "${staging_dir}/${image}"
+          done
+
+          pio pkg exec -- esptool.py \
+            --chip esp32s3 \
+            merge_bin \
+            --output "${staging_dir}/${merged_name}" \
+            --flash_size 8MB \
+            --fill-flash-size 8MB \
+            0x00000000 "${staging_dir}/bootloader.bin" \
+            0x00008000 "${staging_dir}/partitions.bin" \
+            0x00010000 "${staging_dir}/firmware.bin" \
+            0x00340000 "${staging_dir}/littlefs.bin"
+
+          test "$(stat -c '%s' "${staging_dir}/${merged_name}")" -eq 8388608
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          staging_dir = Path(os.environ["STAGING_DIR"])
+          tag = os.environ["RELEASE_TAG"]
+          version = os.environ["RELEASE_VERSION"]
+          merged_name = f"luma-cardputer-{tag}-merged.bin"
+
+          manifest = {
+              "tag": tag,
+              "version": version,
+              "hardware": "M5Stack Cardputer ADV",
+              "chip": "ESP32-S3",
+              "flash_size": "8MB",
+              "images": [
+                  {"file": "bootloader.bin", "address": "0x00000000"},
+                  {"file": "partitions.bin", "address": "0x00008000"},
+                  {"file": "firmware.bin", "address": "0x00010000"},
+                  {"file": "littlefs.bin", "address": "0x00340000"},
+              ],
+              "merged_image": {
+                  "file": merged_name,
+                  "address": "0x00000000",
+              },
+          }
+
+          (staging_dir / "flash.json").write_text(
+              json.dumps(manifest, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          cat > "${staging_dir}/FLASHING.md" <<EOF
+          # Luma ${RELEASE_TAG} Cardputer ADV firmware
+
+          The merged image is an 8 MB ESP32-S3 flash image. Write it at address \`0x00000000\`:
+
+          \`\`\`bash
+          esptool.py --chip esp32s3 write_flash 0x00000000 ${merged_name}
+          \`\`\`
+
+          The split images and their addresses are recorded in \`flash.json\`. The package checksum file covers every split image and the merged image.
+          EOF
+
+          (
+            cd "${staging_dir}"
+            sha256sum bootloader.bin partitions.bin firmware.bin littlefs.bin "${merged_name}" > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
+
+          cp "${staging_dir}/${merged_name}" "${release_dir}/${merged_name}"
+          (
+            cd "${staging_dir}"
+            zip -q -j "${release_dir}/${archive_name}" ./*
+          )
+
+          unzip -t "${release_dir}/${archive_name}"
+          (
+            cd "${release_dir}"
+            sha256sum "${archive_name}" "${merged_name}" > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
+
+          test -s "${release_dir}/${archive_name}"
+          test -s "${release_dir}/${merged_name}"
+          test -s "${release_dir}/SHA256SUMS"
+          find "${release_dir}" -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - native-tests
+      - build-release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v5
+        with:
+          name: release-assets
+          path: release-assets
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd release-assets
+          sha256sum --check SHA256SUMS
+          unzip -t "luma-cardputer-${GITHUB_REF_NAME}-flash.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_flags=(
+            --verify-tag
+            --generate-notes
+            --title "Luma ${RELEASE_TAG}"
+          )
+          if [[ "${RELEASE_TAG}" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          gh release create \
+            "${RELEASE_TAG}" \
+            release-assets/* \
+            "${release_flags[@]}"
