@@ -1,3 +1,5 @@
+<!-- Pull request titles must use the `[Type] Description` format, e.g. `[Feat] Establish the Core coordinator`. -->
+
 ## Summary
 
 <!-- What changed, and why? Include the relevant issue when one exists. -->

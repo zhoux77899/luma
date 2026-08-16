@@ -129,6 +129,9 @@ publishing are separate actions that require the user's explicit request.
 
 Use the commit format and pull-request guidance in `CONTRIBUTING.md`. GitHub pull
 requests are prefilled from `.github/pull_request_template.md`.
+Pull request titles must use the `[Type] Description` format, for example
+`[Feat] Establish the Core coordinator`. Use a concise, capitalized type such as
+`Feat`, `Fix`, `Docs`, `Refactor`, `Test`, `Chore`, or `CI`.
 
 ## Agent skills
 
