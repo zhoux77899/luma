@@ -1,5 +1,6 @@
 #include "luma/luma.h"
 
+#include "luma/core/audio.h"
 #include "luma/core/clock.h"
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
@@ -16,19 +17,21 @@ constexpr Color kWhite{255, 255, 255};
 }  // namespace
 
 Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
-           Settings& settings, Diagnostics& diagnostics)
+           Settings& settings, Diagnostics& diagnostics, Audio& audio)
     : display_(display),
       input_(input),
       clock_(clock),
       storage_(storage),
       settings_(settings),
       diagnostics_(diagnostics),
+      audio_(audio),
       context_(display, settings, storage, clock),
       input_manager_(input, diagnostics),
       app_manager_(context_, diagnostics) {}
 
 void Luma::begin() {
     display_.begin();
+    audio_.begin();
     storage_.begin();
     settings_.load();
     registerApp(launcher_);

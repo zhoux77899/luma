@@ -1,9 +1,10 @@
+#include "cardputer-audio-adapter.h"
 #include "cardputer-clock.h"
 #include "cardputer-display-adapter.h"
 #include "cardputer-input-adapter.h"
+#include "nvs-littlefs-storage.h"
 #include "serial-diagnostics.h"
 
-#include "luma/core/in-memory-storage.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
 
@@ -30,8 +31,13 @@ CardputerClock& clock() {
     return instance;
 }
 
-InMemoryStorage& storage() {
-    static InMemoryStorage instance;
+NvsLittleFsStorage& storage() {
+    static NvsLittleFsStorage instance(diagnostics());
+    return instance;
+}
+
+CardputerAudioAdapter& audio() {
+    static CardputerAudioAdapter instance;
     return instance;
 }
 
@@ -42,6 +48,6 @@ Settings& settings() {
 
 }  // namespace
 
-Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics()) {}
+Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics(), audio()) {}
 
 }  // namespace luma

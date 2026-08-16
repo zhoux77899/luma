@@ -9,7 +9,7 @@ The firmware product that runs on Cardputer ADV, and the coordinator that boots 
 _Avoid_: OS, system, shell
 
 **Core**:
-The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, and display contracts.
+The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, and Audio contracts.
 _Avoid_: shell, OS, runtime
 
 **AppContext**:
@@ -54,6 +54,10 @@ The read-only App that identifies the installed Luma build and target hardware.
 **Cardputer ADV**:
 The M5Stack hardware Luma runs on; the v0.1 release authority.
 _Avoid_: DevKit, ESP32 board
+
+**Audio**:
+The service that emits UI sound events. v0.1 has no audio assets.
+_Avoid_: mixer, soundtrack, speaker API
 
 **SDL preview**:
 The host-side view of the same Apps. Secondary validation, not a second product.
