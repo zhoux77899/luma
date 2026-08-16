@@ -52,6 +52,24 @@ nearest-neighbor scaling. Arrow keys, Enter, Escape, Backspace/Delete, and
 printable characters map to `InputFrame`. Host-only dependencies stay out of the
 firmware build.
 
+## CI and releases
+
+GitHub Actions runs the native PlatformIO tests and the Cardputer firmware build
+for every pull request. The same checks run for pushes to `main` and merge queue
+entries. CI never uploads to hardware; the Cardputer ADV smoke check remains a
+manual device validation.
+
+Push a SemVer tag to create a GitHub Release automatically:
+
+```bash
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+Tags use the form `vX.Y.Z` or `vX.Y.Z-rc.1`. Each release provides a split-image
+flash package, an 8 MB merged image, and `SHA256SUMS`. The package contains
+`FLASHING.md` and `flash.json` with the ESP32-S3 flash addresses.
+
 ## Upload
 
 Connect the Cardputer ADV with a data-capable USB-C cable and run:
