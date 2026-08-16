@@ -1,4 +1,11 @@
-# Luma for M5Stack Cardputer ADV
+<p align="center">
+  <img src="assets/luma-logo/luma-logo.svg" width="128" alt="Luma">
+</p>
+
+<div align="center">
+  <h1>Luma</h1>
+  <p>for M5Stack Cardputer ADV</p>
+</div>
 
 Luma is a statically compiled multi-application firmware for the M5Stack Cardputer ADV.
 The current milestone is the platform adapter seam: Cardputer firmware and the host
