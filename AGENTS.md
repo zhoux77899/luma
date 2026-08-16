@@ -125,6 +125,11 @@ Default work is host-side inspection, editing, and compilation. Device upload,
 serial-session ownership, destructive cleanup, dependency upgrades, and repository
 publishing are separate actions that require the user's explicit request.
 
+## Contribution conventions
+
+Use the commit format and pull-request guidance in `CONTRIBUTING.md`. GitHub pull
+requests are prefilled from `.github/pull_request_template.md`.
+
 ## Agent skills
 
 ### Issue tracker
