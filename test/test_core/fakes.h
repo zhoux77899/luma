@@ -1,5 +1,6 @@
 #pragma once
 
+#include "luma/core/audio.h"
 #include "luma/core/clock.h"
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
@@ -51,6 +52,15 @@ public:
         texts.push_back(text);
     }
     void endFrame() override {}
+};
+
+class FakeAudio : public Audio {
+public:
+    bool begun = false;
+    std::vector<std::string> events;
+
+    void begin() override { begun = true; }
+    void play(const char* event) override { events.push_back(event); }
 };
 
 class FakeClock : public Clock {

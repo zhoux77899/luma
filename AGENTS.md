@@ -3,8 +3,9 @@
 ## Project purpose
 
 Luma is an Arduino/C++ firmware project for the M5Stack Cardputer ADV. The current
-milestone is the Core coordinator: Luma boots into Launcher and routes input,
-lifecycle, and shared service contracts without Cardputer includes in Core.
+milestone is the platform adapter seam: Luma boots into Launcher, routes input,
+lifecycle, and shared service contracts without Cardputer includes in Core, and
+reuses that Core from the host SDL preview.
 
 C++ and C are the primary implementation languages. Use Python only for auxiliary
 tooling, automation, or host-side verification.
@@ -41,13 +42,16 @@ or dependency migration is explicitly requested.
 - `include/`: project-wide public headers and configuration
 - `lib/`: private project libraries
 - `test/`: PlatformIO test code
+- `tools/sdl-preview/`: host `luma-sdl-preview` CMake target and SDL adapters
 - `platformio.ini`: build, upload, dependency, and monitor configuration
 - `README.md`: user-facing setup and hardware workflow
 - `LICENSE`: MIT License
 
 Keep `main.cpp` small: serial setup, `M5Cardputer.begin`, one hardware update, and
 `luma.update()`. Shared behavior lives in `include/luma` and `src/luma`. Cardputer
-adapters stay in `src/luma/platform/cardputer`.
+adapters stay in `src/luma/platform/cardputer`. Host file, clock, audio, and
+diagnostics adapters stay in `src/luma/platform/host`. SDL window and keyboard
+adapters stay in `tools/sdl-preview`.
 
 ## Firmware conventions
 
@@ -86,6 +90,15 @@ Useful commands:
 & $pio run --target clean
 $env:PATH = "$env:USERPROFILE\.platformio\packages\toolchain-gccmingw32\bin;" + $env:PATH
 & $pio test -e native
+```
+
+SDL preview (requires CMake, vcpkg, and `VCPKG_ROOT`):
+
+```powershell
+vcpkg install --triplet x64-windows --manifest-dir tools/sdl-preview
+cmake -S tools/sdl-preview -B build/sdl-preview `
+    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --build build/sdl-preview --config Debug --target luma-sdl-preview
 ```
 
 Hardware upload changes the connected device and requires an explicit user request:

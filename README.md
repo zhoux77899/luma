@@ -1,8 +1,8 @@
 # Luma for M5Stack Cardputer ADV
 
 Luma is a statically compiled multi-application firmware for the M5Stack Cardputer ADV.
-The current milestone is the Core coordinator: boot reaches Launcher, and Apps share a
-platform-independent lifecycle and input frame.
+The current milestone is the platform adapter seam: Cardputer firmware and the host
+SDL preview share Core, boot into Launcher, and keep hardware APIs behind adapters.
 
 ## Build
 
@@ -20,6 +20,30 @@ MinGW package is enough:
 $env:PATH = "$env:USERPROFILE\.platformio\packages\toolchain-gccmingw32\bin;" + $env:PATH
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" test -e native
 ```
+
+## SDL preview
+
+The host preview reuses Core and Launcher. It needs CMake, a C++17 compiler, vcpkg,
+and `VCPKG_ROOT`. Install SDL2, then configure and build from the repository root:
+
+```powershell
+vcpkg install --triplet x64-windows --manifest-dir tools/sdl-preview
+cmake -S tools/sdl-preview -B build/sdl-preview `
+    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --build build/sdl-preview --config Debug --target luma-sdl-preview
+```
+
+Run the executable from the build directory so preview data lands in `data/`:
+
+```powershell
+Set-Location build/sdl-preview
+.\Debug\luma-sdl-preview.exe
+```
+
+The window is 960 x 540 with a fixed 240 x 135 logical canvas and integer 4x
+nearest-neighbor scaling. Arrow keys, Enter, Escape, Backspace/Delete, and
+printable characters map to `InputFrame`. Host-only dependencies stay out of the
+firmware build.
 
 ## Upload
 

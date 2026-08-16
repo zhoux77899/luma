@@ -2,11 +2,22 @@
 
 #include "luma/core/app-context.h"
 #include "luma/core/app-manager.h"
+#include "luma/core/file-storage.h"
+#include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
+#include "luma/platform/host/host-audio-adapter.h"
 
 #include <unity.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#include <process.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -18,6 +29,7 @@ using luma::InputManager;
 using luma::Luma;
 using luma::Settings;
 using luma::test::CountingStorage;
+using luma::test::FakeAudio;
 using luma::test::FakeClock;
 using luma::test::FakeDiagnostics;
 using luma::test::FakeDisplay;
@@ -27,6 +39,15 @@ using luma::test::makeAction;
 using luma::test::makeText;
 
 namespace {
+
+std::string nativeTestStorageRoot(const char* suffix) {
+#ifdef _WIN32
+    const auto process_id = _getpid();
+#else
+    const auto process_id = getpid();
+#endif
+    return "build/native-test-storage-" + std::to_string(process_id) + "-" + suffix;
+}
 
 struct AppManagerFixture {
     FakeDisplay display;
@@ -124,11 +145,13 @@ void test_luma_begin_enters_launcher() {
     CountingStorage storage;
     Settings settings;
     FakeDiagnostics diagnostics;
-    Luma luma(display, input, clock, storage, settings, diagnostics);
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
 
     luma.begin();
 
     TEST_ASSERT_TRUE(display.begun);
+    TEST_ASSERT_TRUE(audio.begun);
     TEST_ASSERT_TRUE(storage.begun);
     TEST_ASSERT_EQUAL_STRING("launcher", luma.currentAppId());
     TEST_ASSERT_TRUE(diagnostics.contains("[BOOT] Luma Cardputer ADV started"));
@@ -144,7 +167,8 @@ void test_luma_draws_only_when_dirty() {
     CountingStorage storage;
     Settings settings;
     FakeDiagnostics diagnostics;
-    Luma luma(display, input, clock, storage, settings, diagnostics);
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
 
     luma.begin();
     const int after_begin = display.draw_text_count;
@@ -159,7 +183,8 @@ void test_luma_processes_deferred_saves_each_update() {
     CountingStorage storage;
     Settings settings;
     FakeDiagnostics diagnostics;
-    Luma luma(display, input, clock, storage, settings, diagnostics);
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
 
     luma.begin();
     TEST_ASSERT_EQUAL_INT(0, storage.flush_count);
@@ -178,7 +203,8 @@ void test_luma_routes_input_frame_to_app_manager() {
     FakeDiagnostics diagnostics;
     std::vector<std::string> log;
     RecordingApp about("about", "About", 'a', log);
-    Luma luma(display, input, clock, storage, settings, diagnostics);
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
 
     luma.registerApp(about);
     luma.begin();
@@ -208,6 +234,67 @@ void test_input_manager_dispatches_fake_source() {
     TEST_ASSERT_TRUE(diagnostics.contains("[KEY] x"));
 }
 
+void test_in_memory_storage_round_trips_notes() {
+    luma::InMemoryStorage storage;
+    TEST_ASSERT_TRUE(storage.begin());
+
+    const char payload[] = "hello notes";
+    TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/notes.txt", payload, 11));
+
+    char buffer[32] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(11, length);
+    TEST_ASSERT_EQUAL_STRING("hello notes", buffer);
+}
+
+void test_file_storage_persists_across_instances() {
+    const std::string root = nativeTestStorageRoot("persistence");
+    luma::FileStorage first(root.c_str());
+    TEST_ASSERT_TRUE(first.begin());
+    TEST_ASSERT_TRUE(first.writeFileAtomic("/apps/notes/notes.txt", "persist-me", 10));
+
+    luma::FileStorage second(root.c_str());
+    TEST_ASSERT_TRUE(second.begin());
+
+    char buffer[32] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(second.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(10, length);
+    TEST_ASSERT_EQUAL_STRING("persist-me", buffer);
+}
+
+void test_file_storage_keeps_previous_file_when_replace_fails() {
+    const std::string root = nativeTestStorageRoot("replace");
+    luma::FileStorage storage(root.c_str());
+    TEST_ASSERT_TRUE(storage.begin());
+    TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/notes.txt", "keep-me", 7));
+
+#ifdef _WIN32
+    const std::string blocked_path = root + "/apps/notes/notes.txt.tmp";
+    _mkdir(blocked_path.c_str());
+#else
+    const std::string blocked_path = root + "/apps/notes/notes.txt.tmp";
+    mkdir(blocked_path.c_str(), 0755);
+#endif
+
+    TEST_ASSERT_FALSE(storage.writeFileAtomic("/apps/notes/notes.txt", "overwrite", 9));
+
+    char buffer[32] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(7, length);
+    TEST_ASSERT_EQUAL_STRING("keep-me", buffer);
+}
+
+void test_host_audio_emits_event_log() {
+    FakeDiagnostics diagnostics;
+    luma::HostAudioAdapter audio(diagnostics);
+
+    audio.play("click");
+    TEST_ASSERT_TRUE(diagnostics.contains("[AUDIO] click"));
+}
+
 void setUp() {}
 void tearDown() {}
 
@@ -222,5 +309,9 @@ int main() {
     RUN_TEST(test_luma_processes_deferred_saves_each_update);
     RUN_TEST(test_luma_routes_input_frame_to_app_manager);
     RUN_TEST(test_input_manager_dispatches_fake_source);
+    RUN_TEST(test_in_memory_storage_round_trips_notes);
+    RUN_TEST(test_file_storage_persists_across_instances);
+    RUN_TEST(test_file_storage_keeps_previous_file_when_replace_fails);
+    RUN_TEST(test_host_audio_emits_event_log);
     return UNITY_END();
 }
