@@ -13,6 +13,7 @@ list(FILTER LUMA_SOURCES EXCLUDE REGEX "platform[/\\]cardputer")
 
 add_executable(luma-sdl-preview
     main.cpp
+    sdl-audio-adapter.cpp
     sdl-display-adapter.cpp
     sdl-input-adapter.cpp
     ${LUMA_SOURCES}

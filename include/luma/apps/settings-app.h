@@ -22,11 +22,11 @@ private:
     bool handleValueKey(const InputFrame& input);
     int detailCount() const;
     bool isBrightness() const;
-    bool isSoundItem() const;
+    bool isVolume() const;
     bool isTheme() const;
     bool isAbout() const;
     void detailLabelValue(int index, const char*& label, const char*& value, char* brightness,
-                          const char* sound, const char* theme_label) const;
+                          char* volume, const char* theme_label) const;
 
     AppContext* context_ = nullptr;
     Pane pane_ = Pane::Category;

@@ -1,17 +1,17 @@
+#include "sdl-audio-adapter.h"
 #include "sdl-display-adapter.h"
 #include "sdl-input-adapter.h"
 
 #include "luma/core/file-storage.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
-#include "luma/platform/host/host-audio-adapter.h"
 #include "luma/platform/host/host-clock-adapter.h"
 #include "luma/platform/host/host-diagnostics.h"
 
 #include <SDL.h>
 
 int main(int, char**) {
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
         return 1;
     }
     SDL_StartTextInput();
@@ -22,7 +22,7 @@ int main(int, char**) {
     luma::HostClockAdapter clock;
     luma::HostStorageAdapter storage("data");
     luma::Settings settings;
-    luma::HostAudioAdapter audio(diagnostics);
+    luma::SdlAudioAdapter audio;
     luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio);
 
     luma.begin();

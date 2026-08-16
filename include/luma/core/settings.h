@@ -11,12 +11,12 @@ class Storage;
 class Settings {
 public:
     static constexpr uint8_t kDefaultBrightness = 80;
-    static constexpr bool kDefaultSound = true;
+    static constexpr uint8_t kDefaultVolume = 80;
     static constexpr uint8_t kDefaultTheme = 0;
     static constexpr uint8_t kDefaultSchema = 1;
     static constexpr uint32_t kFlushDelayMs = 500;
     static constexpr const char* kBrightnessKey = "brightness";
-    static constexpr const char* kSoundKey = "sound";
+    static constexpr const char* kVolumeKey = "volume";
     static constexpr const char* kThemeKey = "theme";
     static constexpr const char* kSchemaKey = "schema";
 
@@ -27,12 +27,12 @@ public:
     void flushNow();
 
     uint8_t brightness() const;
-    bool sound() const;
+    uint8_t volume() const;
     uint8_t theme() const;
     uint8_t schema() const;
 
     void setBrightness(uint8_t brightness);
-    void setSound(bool sound);
+    void setVolume(uint8_t volume);
     void setTheme(uint8_t theme);
 
 private:
@@ -44,7 +44,7 @@ private:
     Diagnostics* diagnostics_ = nullptr;
     Clock* clock_ = nullptr;
     uint8_t brightness_ = kDefaultBrightness;
-    bool sound_ = kDefaultSound;
+    uint8_t volume_ = kDefaultVolume;
     uint8_t theme_ = kDefaultTheme;
     uint8_t schema_ = kDefaultSchema;
     bool pending_ = false;

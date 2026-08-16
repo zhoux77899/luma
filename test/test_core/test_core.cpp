@@ -512,11 +512,11 @@ void test_settings_loads_valid_keys_independently() {
     FakeDiagnostics diagnostics;
     FakeClock clock;
     uint8_t brightness = 40;
-    uint8_t sound = 0;
+    uint8_t volume = 20;
     uint8_t theme = 1;
     uint8_t schema = 1;
     TEST_ASSERT_TRUE(storage.savePref("brightness", &brightness, 1));
-    TEST_ASSERT_TRUE(storage.savePref("sound", &sound, 1));
+    TEST_ASSERT_TRUE(storage.savePref("volume", &volume, 1));
     TEST_ASSERT_TRUE(storage.savePref("theme", &theme, 1));
     TEST_ASSERT_TRUE(storage.savePref("schema", &schema, 1));
 
@@ -525,7 +525,7 @@ void test_settings_loads_valid_keys_independently() {
     settings.load();
 
     TEST_ASSERT_EQUAL_UINT8(40, settings.brightness());
-    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT8(20, settings.volume());
     TEST_ASSERT_EQUAL_UINT8(1, settings.theme());
     TEST_ASSERT_EQUAL_UINT8(1, settings.schema());
 }
@@ -536,19 +536,33 @@ void test_settings_invalid_key_falls_back_without_wiping_others() {
     FakeClock clock;
     uint8_t brightness = 40;
     uint8_t theme = 9;
-    uint8_t sound = 0;
+    uint8_t volume = 200;
     TEST_ASSERT_TRUE(storage.savePref("brightness", &brightness, 1));
     TEST_ASSERT_TRUE(storage.savePref("theme", &theme, 1));
-    TEST_ASSERT_TRUE(storage.savePref("sound", &sound, 1));
+    TEST_ASSERT_TRUE(storage.savePref("volume", &volume, 1));
 
     Settings settings;
     settings.attach(storage, diagnostics, clock);
     settings.load();
 
     TEST_ASSERT_EQUAL_UINT8(40, settings.brightness());
-    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT8(80, settings.volume());
     TEST_ASSERT_EQUAL_UINT8(0, settings.theme());
     TEST_ASSERT_EQUAL_UINT8(1, settings.schema());
+}
+
+void test_settings_ignores_legacy_sound_key() {
+    luma::InMemoryStorage storage;
+    FakeDiagnostics diagnostics;
+    FakeClock clock;
+    uint8_t sound = 0;
+    TEST_ASSERT_TRUE(storage.savePref("sound", &sound, 1));
+
+    Settings settings;
+    settings.attach(storage, diagnostics, clock);
+    settings.load();
+
+    TEST_ASSERT_EQUAL_UINT8(80, settings.volume());
 }
 
 void test_settings_debounce_then_flush() {
@@ -627,7 +641,7 @@ void test_settings_flush_on_exit_before_debounce() {
     TEST_ASSERT_TRUE(diagnostics.contains("[SETTINGS] saved"));
 }
 
-void test_settings_sound_off_does_not_play_click() {
+void test_settings_volume_zero_does_not_play_click() {
     FakeDisplay display;
     FakeInputSource input;
     FakeClock clock;
@@ -645,24 +659,61 @@ void test_settings_sound_off_does_not_play_click() {
     luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
-    input.push(makeAction(InputAction::Right));
-    luma.update();
+    for (int i = 0; i < 8; ++i) {
+        input.push(makeAction(InputAction::Left));
+        luma.update();
+    }
     input.push(makeAction(InputAction::Back));
     luma.update();
     audio.events.clear();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
 
-    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT8(0, settings.volume());
+    TEST_ASSERT_EQUAL_UINT8(0, audio.volume);
     TEST_ASSERT_EQUAL_UINT(0, audio.events.size());
+}
+
+void test_settings_volume_steps_and_applies() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    audio.events.clear();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_UINT8(90, settings.volume());
+    TEST_ASSERT_EQUAL_UINT8(90, audio.volume);
+    TEST_ASSERT_TRUE(display.hasText("Volume"));
+    TEST_ASSERT_TRUE(display.hasText("90%"));
+    TEST_ASSERT_EQUAL_UINT(1, audio.events.size());
+    TEST_ASSERT_EQUAL_STRING("click", audio.events[0].c_str());
 }
 
 void test_theme_palette_inverts_for_light() {
     const auto dark = luma::theme::paletteFor(0);
     const auto light = luma::theme::paletteFor(1);
-    TEST_ASSERT_TRUE(luma::colorsEqual(dark.canvas, luma::theme::kSumi));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.canvas, luma::theme::kKuro));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.card, luma::theme::kSumi));
     TEST_ASSERT_TRUE(luma::colorsEqual(dark.primary_text, luma::theme::kGofun));
     TEST_ASSERT_TRUE(luma::colorsEqual(light.canvas, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.card, luma::theme::kShironezumi));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.secondary_text, luma::theme::kGinnezumi));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.secondary_text, luma::theme::kGinnezumi));
     TEST_ASSERT_TRUE(luma::colorsEqual(light.primary_text, luma::theme::kSumi));
     TEST_ASSERT_TRUE(luma::colorsEqual(light.boot_canvas, luma::theme::kGofun));
 }
@@ -1076,10 +1127,12 @@ int main() {
     RUN_TEST(test_ui_font_lowercase_is_not_shifted_by_backslash_comment);
     RUN_TEST(test_settings_loads_valid_keys_independently);
     RUN_TEST(test_settings_invalid_key_falls_back_without_wiping_others);
+    RUN_TEST(test_settings_ignores_legacy_sound_key);
     RUN_TEST(test_settings_debounce_then_flush);
     RUN_TEST(test_settings_app_steps_brightness_and_applies);
     RUN_TEST(test_settings_flush_on_exit_before_debounce);
-    RUN_TEST(test_settings_sound_off_does_not_play_click);
+    RUN_TEST(test_settings_volume_zero_does_not_play_click);
+    RUN_TEST(test_settings_volume_steps_and_applies);
     RUN_TEST(test_theme_palette_inverts_for_light);
     RUN_TEST(test_settings_opens_about_with_build_identity);
     RUN_TEST(test_settings_category_left_right_does_not_change_brightness);

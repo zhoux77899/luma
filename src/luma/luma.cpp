@@ -38,6 +38,7 @@ void Luma::begin() {
     settings_.attach(storage_, diagnostics_, clock_);
     settings_.load();
     display_.setBrightness(settings_.brightness());
+    audio_.setVolume(settings_.volume());
     registerApp(launcher_);
     registerApp(settings_app_);
     registerApp(about_app_);
@@ -116,7 +117,8 @@ void Luma::requestHeaderTimeRedraw() {
 }
 
 void Luma::playUiSound(const char* event) {
-    if (settings_.sound()) {
+    audio_.setVolume(settings_.volume());
+    if (settings_.volume() > 0) {
         audio_.play(event);
     }
 }

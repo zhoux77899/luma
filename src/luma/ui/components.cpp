@@ -60,6 +60,19 @@ void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect b
     }
 }
 
+void drawProgressBar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                     uint8_t percent) {
+    display.fillRect(bounds, palette.secondary_text);
+    if (percent == 0 || bounds.w <= 0) {
+        return;
+    }
+    const unsigned clamped = percent > 100 ? 100 : percent;
+    const int fill_w = static_cast<int>((static_cast<unsigned>(bounds.w) * clamped) / 100);
+    if (fill_w > 0) {
+        display.fillRect({bounds.x, bounds.y, fill_w, bounds.h}, palette.accent);
+    }
+}
+
 void drawList(DisplaySurface& display, const theme::Palette& palette, const char* const* items,
               int count, int selected) {
     if (items == nullptr) {

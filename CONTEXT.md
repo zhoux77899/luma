@@ -46,15 +46,19 @@ A statically compiled, registered program the user can enter from Launcher and l
 _Avoid_: plugin, package, activity, window
 
 **Settings**:
-The persisted device preferences: brightness, sound, and Theme preference.
+The persisted device preferences: brightness, Volume, and Theme preference.
 _Avoid_: Preferences, config
+
+**Volume**:
+The persisted 0..100 UI audio level in Settings. 0 silences UI sound.
+_Avoid_: Sound (for the 0..100 value), mute flag, gain
 
 **Theme preference**:
 The Dark or Light appearance stored in Settings. 0 is Dark; 1 is Light.
 _Avoid_: high contrast, Theme (for the stored 0/1 value)
 
 **Design tokens**:
-The DESIGN.md colors in `luma::theme`. Theme preference selects which canvas and text mapping those tokens use.
+The DESIGN.md colors in `luma::theme`. Theme preference selects canvas, card, and text mapping. Dark canvas is Kuro with Sumi cards; Light canvas is Gofun with Shironezumi cards. Ginnezumi is secondary text in both Themes.
 _Avoid_: Theme preference, palette name as a product setting
 
 **Settings App**:
@@ -88,7 +92,7 @@ The M5Stack hardware Luma runs on; the v0.1 release authority.
 _Avoid_: DevKit, ESP32 board
 
 **Audio**:
-The service that emits UI sound events. v0.1 has no audio assets.
+The service that emits UI sound events at the current Volume. Click uses a generated tick, not an audio file.
 _Avoid_: mixer, soundtrack, speaker API
 
 **SDL preview**:

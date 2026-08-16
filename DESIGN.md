@@ -62,18 +62,18 @@ Neutrals are for canvases, typography, separators, system interfaces, and Logo p
 
 | Token | Japanese name | Romanization | HEX | Role |
 | --- | --- | --- | --- | --- |
-| `neutral-gofun` | 胡粉 | GOFUN | `#FFFFFB` | Cool white, light content surface |
-| `neutral-shironeri` | 白練 | SHIRONERI | `#FCFAF2` | Default warm-white canvas |
-| `neutral-shironezumi` | 白鼠 | SHIRONEZUMI | `#BDC0BA` | Light gray, secondary separators |
-| `neutral-ginnezumi` | 銀鼠 | GINNEZUMI | `#91989F` | Secondary text, disabled states |
-| `neutral-sumi` | 墨 | SUMI | `#1C1C1C` | Body text, icons, dark-mode surface |
-| `neutral-kuro` | 黒 | KURO | `#080808` | Dark Logo presentation background |
+| `neutral-gofun` | 胡粉 | GOFUN | `#FFFFFB` | Cool white, Light App canvas |
+| `neutral-shironezumi` | 白鼠 | SHIRONEZUMI | `#BDC0BA` | Light card surface |
+| `neutral-ginnezumi` | 銀鼠 | GINNEZUMI | `#91989F` | Dark and Light secondary text, separators, and disabled states |
+| `neutral-sumi` | 墨 | SUMI | `#1C1C1C` | Light body text; Dark card surface |
+| `neutral-kuro` | 黒 | KURO | `#080808` | Dark App canvas, Boot, and Logo presentation background |
 
 ### Neutral Color Rules
 
-- Use `neutral-shironeri` or `neutral-gofun` as the default canvas so the four high-chroma Logo colors remain clear.
+- Light Theme uses `neutral-gofun` as the App canvas and `neutral-shironezumi` as the card surface.
+- Dark Theme uses `neutral-kuro` as the App canvas and `neutral-sumi` as the card surface. Define Settings pane cards by this fill, not by a stroke.
+- Use `neutral-ginnezumi` for secondary text, separators, and disabled information in both Dark and Light. Do not use it for small body text.
 - Use dark backgrounds only for an explicit dark mode or Logo presentation variant. A dark canvas is not part of the Logo mark itself.
-- Use `neutral-ginnezumi` for secondary or disabled information, not for small body text.
 - Do not introduce pure black `#000000` as a new design token. Use Nippon Colors' `neutral-kuro` when a black role is required.
 
 ## 6. Asset Handoff Checklist
