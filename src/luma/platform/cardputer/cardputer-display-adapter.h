@@ -17,6 +17,7 @@ public:
     void drawRoundRect(Rect rect, int radius, Color color) override;
     void drawText(Point origin, TextStyle style, const char* text) override;
     void drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) override;
+    void setBrightness(uint8_t percent) override;
     void endFrame() override;
 };
 

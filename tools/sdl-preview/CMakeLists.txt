@@ -23,6 +23,10 @@ target_include_directories(luma-sdl-preview PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+target_compile_definitions(luma-sdl-preview PRIVATE
+    LUMA_BUILD_ENV="luma-sdl-preview"
+)
+
 target_link_libraries(luma-sdl-preview PRIVATE SDL2::SDL2)
 if(TARGET SDL2::SDL2main)
     target_link_libraries(luma-sdl-preview PRIVATE SDL2::SDL2main)

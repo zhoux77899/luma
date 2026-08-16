@@ -1,20 +1,87 @@
 #include "luma/core/settings.h"
 
+#include "luma/core/clock.h"
+#include "luma/core/diagnostics.h"
+#include "luma/core/storage.h"
+
 namespace luma {
+namespace {
+
+bool brightnessValid(uint8_t value) { return value <= 100; }
+bool themeValid(uint8_t value) { return value <= 1; }
+bool schemaValid(uint8_t value) { return value == Settings::kDefaultSchema; }
+
+}  // namespace
+
+void Settings::attach(Storage& storage, Diagnostics& diagnostics, Clock& clock) {
+    storage_ = &storage;
+    diagnostics_ = &diagnostics;
+    clock_ = &clock;
+}
 
 void Settings::load() {
-    if (!valid()) {
-        applyDefaults();
+    uint8_t brightness = kDefaultBrightness;
+    if (loadU8(kBrightnessKey, brightness) && brightnessValid(brightness)) {
+        brightness_ = brightness;
+    } else {
+        brightness_ = kDefaultBrightness;
+    }
+
+    uint8_t sound = kDefaultSound ? 1 : 0;
+    if (loadU8(kSoundKey, sound)) {
+        sound_ = sound != 0;
+    } else {
+        sound_ = kDefaultSound;
+    }
+
+    uint8_t theme = kDefaultTheme;
+    if (loadU8(kThemeKey, theme) && themeValid(theme)) {
+        theme_ = theme;
+    } else {
+        theme_ = kDefaultTheme;
+    }
+
+    uint8_t schema = kDefaultSchema;
+    if (loadU8(kSchemaKey, schema) && schemaValid(schema)) {
+        schema_ = schema;
+    } else {
+        schema_ = kDefaultSchema;
     }
 }
 
-void Settings::requestFlush() { flush_requested_ = true; }
+void Settings::requestFlush() { markDirty(); }
 
-void Settings::processDeferredSaves() {
-    if (!flush_requested_) {
+void Settings::processDeferredSaves(uint32_t now_ms) {
+    if (!pending_) {
         return;
     }
-    flush_requested_ = false;
+    if (now_ms - last_change_ms_ < kFlushDelayMs) {
+        return;
+    }
+    flushNow();
+}
+
+void Settings::flushNow() {
+    if (!pending_) {
+        return;
+    }
+    pending_ = false;
+    if (storage_ == nullptr) {
+        return;
+    }
+
+    const uint8_t sound = sound_ ? 1 : 0;
+    const bool ok = saveU8(kBrightnessKey, brightness_) && saveU8(kSoundKey, sound) &&
+                    saveU8(kThemeKey, theme_) && saveU8(kSchemaKey, schema_);
+    if (diagnostics_ == nullptr) {
+        return;
+    }
+    if (ok) {
+        diagnostics_->emit("SETTINGS", "saved");
+    } else {
+        diagnostics_->emit("ERROR", "settings save failed");
+        pending_ = true;
+    }
 }
 
 uint8_t Settings::brightness() const { return brightness_; }
@@ -23,30 +90,48 @@ uint8_t Settings::theme() const { return theme_; }
 uint8_t Settings::schema() const { return schema_; }
 
 void Settings::setBrightness(uint8_t brightness) {
-    brightness_ = brightness;
-    if (!valid()) {
-        brightness_ = kDefaultBrightness;
+    if (!brightnessValid(brightness) || brightness_ == brightness) {
+        return;
     }
+    brightness_ = brightness;
+    markDirty();
 }
 
-void Settings::setSound(bool sound) { sound_ = sound; }
+void Settings::setSound(bool sound) {
+    if (sound_ == sound) {
+        return;
+    }
+    sound_ = sound;
+    markDirty();
+}
 
 void Settings::setTheme(uint8_t theme) {
+    if (!themeValid(theme) || theme_ == theme) {
+        return;
+    }
     theme_ = theme;
-    if (!valid()) {
-        theme_ = kDefaultTheme;
+    markDirty();
+}
+
+void Settings::markDirty() {
+    pending_ = true;
+    if (clock_ != nullptr) {
+        last_change_ms_ = clock_->millis();
     }
 }
 
-void Settings::applyDefaults() {
-    brightness_ = kDefaultBrightness;
-    sound_ = kDefaultSound;
-    theme_ = kDefaultTheme;
-    schema_ = kDefaultSchema;
+bool Settings::loadU8(const char* key, uint8_t& value) const {
+    if (storage_ == nullptr) {
+        return false;
+    }
+    return storage_->loadPref(key, &value, sizeof(value));
 }
 
-bool Settings::valid() const {
-    return brightness_ <= 100 && theme_ <= 1 && schema_ == kDefaultSchema;
+bool Settings::saveU8(const char* key, uint8_t value) const {
+    if (storage_ == nullptr) {
+        return false;
+    }
+    return storage_->savePref(key, &value, sizeof(value));
 }
 
 }  // namespace luma

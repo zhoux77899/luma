@@ -5,6 +5,7 @@
 #include "luma/core/file-storage.h"
 #include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
+#include "luma/apps/notes-app.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
 #include "luma/platform/host/host-audio-adapter.h"
@@ -23,6 +24,7 @@
 #include <unistd.h>
 #endif
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -74,7 +76,7 @@ struct AppManagerFixture {
     RecordingApp about;
 
     AppManagerFixture()
-        : context(display, settings, storage, clock),
+        : context(display, settings, storage, clock, diagnostics),
           manager(context, diagnostics),
           launcher("launcher", "Launcher", '\0', log),
           about("about", "About", 'a', log) {
@@ -193,10 +195,13 @@ void test_luma_enters_launcher_after_boot_timeout() {
 
     TEST_ASSERT_EQUAL_STRING("launcher", luma.currentAppId());
     TEST_ASSERT_TRUE(diagnostics.contains("[APP] enter launcher"));
+    TEST_ASSERT_TRUE(display.hasText("LUMA"));
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("ABOUT"));
     TEST_ASSERT_TRUE(display.hasText("NOTES"));
     TEST_ASSERT_FALSE(display.hasText("Launcher"));
+    TEST_ASSERT_FALSE(display.hasText("LAUNCHER"));
+    TEST_ASSERT_EQUAL_UINT8(80, display.brightness);
     TEST_ASSERT_FALSE(display.hasText("Enter Open"));
     TEST_ASSERT_TRUE(display.hasText("--:--"));
     TEST_ASSERT_TRUE(display.hasBitmap({kHeaderLogoX, kHeaderLogoY}, kHeaderLogoSize,
@@ -316,8 +321,18 @@ void test_launcher_confirm_opens_settings() {
 
     TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
-    TEST_ASSERT_TRUE(display.hasText("Coming soon"));
-    TEST_ASSERT_TRUE(display.hasText("Esc Back"));
+    TEST_ASSERT_TRUE(display.hasText("Brightness"));
+    TEST_ASSERT_TRUE(display.hasText("80%"));
+    TEST_ASSERT_TRUE(display.hasText("Sound"));
+    TEST_ASSERT_TRUE(display.hasText("On"));
+    TEST_ASSERT_TRUE(display.hasText("Theme"));
+    TEST_ASSERT_TRUE(display.hasText("Dark"));
+    TEST_ASSERT_TRUE(display.hasText("About"));
+    TEST_ASSERT_TRUE(display.hasText("Ent"));
+    TEST_ASSERT_TRUE(display.hasText("ok"));
+    TEST_ASSERT_TRUE(display.hasText("Esc"));
+    TEST_ASSERT_TRUE(display.hasText("back"));
+    TEST_ASSERT_FALSE(display.hasText("Coming soon"));
 }
 
 void test_stub_back_returns_to_launcher() {
@@ -398,7 +413,7 @@ void test_launcher_header_updates_when_minute_changes() {
 void test_ui_dialog_draws_title_and_body() {
     FakeDisplay display;
     display.beginFrame();
-    luma::drawDialog(display, "Title", "Body");
+    luma::drawDialog(display, luma::theme::paletteFor(0), "Title", "Body");
 
     TEST_ASSERT_TRUE(display.hasText("Title"));
     TEST_ASSERT_TRUE(display.hasText("Body"));
@@ -487,6 +502,405 @@ void test_ui_font_lowercase_is_not_shifted_by_backslash_comment() {
     TEST_ASSERT_EQUAL_HEX16(0x8000, luma::font::glyphRows('b', false)[2]);
 }
 
+void test_settings_loads_valid_keys_independently() {
+    luma::InMemoryStorage storage;
+    FakeDiagnostics diagnostics;
+    FakeClock clock;
+    uint8_t brightness = 40;
+    uint8_t sound = 0;
+    uint8_t theme = 1;
+    uint8_t schema = 1;
+    TEST_ASSERT_TRUE(storage.savePref("brightness", &brightness, 1));
+    TEST_ASSERT_TRUE(storage.savePref("sound", &sound, 1));
+    TEST_ASSERT_TRUE(storage.savePref("theme", &theme, 1));
+    TEST_ASSERT_TRUE(storage.savePref("schema", &schema, 1));
+
+    Settings settings;
+    settings.attach(storage, diagnostics, clock);
+    settings.load();
+
+    TEST_ASSERT_EQUAL_UINT8(40, settings.brightness());
+    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT8(1, settings.theme());
+    TEST_ASSERT_EQUAL_UINT8(1, settings.schema());
+}
+
+void test_settings_invalid_key_falls_back_without_wiping_others() {
+    luma::InMemoryStorage storage;
+    FakeDiagnostics diagnostics;
+    FakeClock clock;
+    uint8_t brightness = 40;
+    uint8_t theme = 9;
+    uint8_t sound = 0;
+    TEST_ASSERT_TRUE(storage.savePref("brightness", &brightness, 1));
+    TEST_ASSERT_TRUE(storage.savePref("theme", &theme, 1));
+    TEST_ASSERT_TRUE(storage.savePref("sound", &sound, 1));
+
+    Settings settings;
+    settings.attach(storage, diagnostics, clock);
+    settings.load();
+
+    TEST_ASSERT_EQUAL_UINT8(40, settings.brightness());
+    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT8(0, settings.theme());
+    TEST_ASSERT_EQUAL_UINT8(1, settings.schema());
+}
+
+void test_settings_debounce_then_flush() {
+    luma::InMemoryStorage storage;
+    FakeDiagnostics diagnostics;
+    FakeClock clock;
+    Settings settings;
+    settings.attach(storage, diagnostics, clock);
+
+    clock.now = 100;
+    settings.setBrightness(70);
+    settings.processDeferredSaves(400);
+    uint8_t stored = 0;
+    TEST_ASSERT_FALSE(storage.loadPref("brightness", &stored, 1));
+
+    settings.processDeferredSaves(600);
+    TEST_ASSERT_TRUE(storage.loadPref("brightness", &stored, 1));
+    TEST_ASSERT_EQUAL_UINT8(70, stored);
+    TEST_ASSERT_TRUE(diagnostics.contains("[SETTINGS] saved"));
+}
+
+void test_settings_app_steps_brightness_and_applies() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    audio.events.clear();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_UINT8(90, settings.brightness());
+    TEST_ASSERT_EQUAL_UINT8(90, display.brightness);
+    TEST_ASSERT_TRUE(display.hasText("90%"));
+    TEST_ASSERT_EQUAL_UINT(1, audio.events.size());
+    TEST_ASSERT_EQUAL_STRING("click", audio.events[0].c_str());
+}
+
+void test_settings_flush_on_exit_before_debounce() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    clock.now = 2000;
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+
+    uint8_t stored = 0;
+    TEST_ASSERT_TRUE(storage.loadPref("brightness", &stored, 1));
+    TEST_ASSERT_EQUAL_UINT8(90, stored);
+    TEST_ASSERT_TRUE(diagnostics.contains("[SETTINGS] saved"));
+}
+
+void test_settings_sound_off_does_not_play_click() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+    input.push(makeAction(InputAction::Up));
+    luma.update();
+    audio.events.clear();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+
+    TEST_ASSERT_FALSE(settings.sound());
+    TEST_ASSERT_EQUAL_UINT(0, audio.events.size());
+}
+
+void test_theme_palette_inverts_for_light() {
+    const auto dark = luma::theme::paletteFor(0);
+    const auto light = luma::theme::paletteFor(1);
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.canvas, luma::theme::kSumi));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.primary_text, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.canvas, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.primary_text, luma::theme::kSumi));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.boot_canvas, luma::theme::kGofun));
+}
+
+void test_settings_opens_about_with_build_identity() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    CountingStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_STRING("about", luma.currentAppId());
+    TEST_ASSERT_TRUE(display.hasText("ABOUT"));
+    TEST_ASSERT_TRUE(display.hasText("0.1"));
+    TEST_ASSERT_TRUE(display.hasText("Cardputer ADV"));
+    TEST_ASSERT_TRUE(display.hasText("native"));
+    TEST_ASSERT_TRUE(display.hasText("MIT"));
+}
+
+void test_header_time_updates_outside_launcher() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    CountingStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    clock.civil.hour = 10;
+    clock.civil.minute = 0;
+    clock.civil.valid = true;
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("10:00"));
+
+    clock.civil.minute = 1;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("10:01"));
+}
+
+void enterNotes(Luma& luma, FakeInputSource& input) {
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
+void typeText(Luma& luma, FakeInputSource& input, const char* text) {
+    for (const char* cursor = text; *cursor != '\0'; ++cursor) {
+        input.push(makeText(*cursor));
+        luma.update();
+    }
+}
+
+void test_notes_round_trips_multiline_text() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    typeText(luma, input, "ab");
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    typeText(luma, input, "cd");
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    enterNotes(luma, input);
+
+    TEST_ASSERT_TRUE(display.hasText("ab"));
+    TEST_ASSERT_TRUE(display.hasText("cd"));
+
+    char buffer[16] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(5, length);
+    TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "ab\ncd", 5));
+}
+
+void test_notes_deletes_in_the_middle() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    typeText(luma, input, "hello");
+    input.push(makeAction(InputAction::Left));
+    luma.update();
+    input.push(makeAction(InputAction::Left));
+    luma.update();
+    input.push(makeAction(InputAction::Delete));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+
+    char buffer[16] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(4, length);
+    TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "helo", 4));
+}
+
+void test_notes_up_keeps_column() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    typeText(luma, input, "ab");
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    typeText(luma, input, "cd");
+    input.push(makeAction(InputAction::Up));
+    luma.update();
+    input.push(makeText('X'));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+
+    char buffer[16] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(6, length);
+    TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "abX\ncd", 6));
+}
+
+void test_notes_rejects_overflow_and_shows_full() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    for (size_t i = 0; i < luma::NotesApp::kMaxLength; ++i) {
+        input.push(makeText('a'));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("FULL"));
+    input.push(makeText('b'));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+
+    char buffer[luma::NotesApp::kMaxLength + 4] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(luma::NotesApp::kMaxLength, length);
+    TEST_ASSERT_EQUAL_INT('a', buffer[0]);
+    TEST_ASSERT_EQUAL_INT('a', buffer[luma::NotesApp::kMaxLength - 1]);
+}
+
+void test_notes_failed_save_keeps_previous_and_memory() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::test::ControllableStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/notes.txt", "keep", 4));
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    clock.now = 4000;
+    typeText(luma, input, "Z");
+    storage.write_succeeds = false;
+    clock.now = 4500;
+    luma.update();
+
+    TEST_ASSERT_TRUE(diagnostics.contains("[ERROR] notes save failed"));
+    TEST_ASSERT_TRUE(display.hasText("SAVE FAIL"));
+    TEST_ASSERT_TRUE(display.hasText("keepZ"));
+    char buffer[16] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(4, length);
+    TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "keep", 4));
+}
+
+void test_notes_autosaves_after_idle() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    clock.now = 3000;
+    typeText(luma, input, "hi");
+    clock.now = 3500;
+    luma.update();
+
+    char buffer[16] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(2, length);
+    TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "hi", 2));
+}
+
 void test_host_audio_emits_event_log() {
     FakeDiagnostics diagnostics;
     luma::HostAudioAdapter audio(diagnostics);
@@ -521,6 +935,21 @@ int main() {
     RUN_TEST(test_file_storage_persists_across_instances);
     RUN_TEST(test_file_storage_keeps_previous_file_when_replace_fails);
     RUN_TEST(test_ui_font_lowercase_is_not_shifted_by_backslash_comment);
+    RUN_TEST(test_settings_loads_valid_keys_independently);
+    RUN_TEST(test_settings_invalid_key_falls_back_without_wiping_others);
+    RUN_TEST(test_settings_debounce_then_flush);
+    RUN_TEST(test_settings_app_steps_brightness_and_applies);
+    RUN_TEST(test_settings_flush_on_exit_before_debounce);
+    RUN_TEST(test_settings_sound_off_does_not_play_click);
+    RUN_TEST(test_theme_palette_inverts_for_light);
+    RUN_TEST(test_settings_opens_about_with_build_identity);
+    RUN_TEST(test_header_time_updates_outside_launcher);
+    RUN_TEST(test_notes_round_trips_multiline_text);
+    RUN_TEST(test_notes_deletes_in_the_middle);
+    RUN_TEST(test_notes_up_keeps_column);
+    RUN_TEST(test_notes_rejects_overflow_and_shows_full);
+    RUN_TEST(test_notes_failed_save_keeps_previous_and_memory);
+    RUN_TEST(test_notes_autosaves_after_idle);
     RUN_TEST(test_host_audio_emits_event_log);
     return UNITY_END();
 }

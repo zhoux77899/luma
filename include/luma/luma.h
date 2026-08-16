@@ -37,7 +37,8 @@ private:
     void drawBootScreen();
     bool inputPresent(const InputFrame& frame) const;
     void finishBoot();
-    void requestLauncherTimeRedraw();
+    void requestHeaderTimeRedraw();
+    void playUiSound(const char* event);
 
     DisplaySurface& display_;
     InputSource& input_;

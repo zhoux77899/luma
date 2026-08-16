@@ -2,18 +2,29 @@
 
 #include "luma/core/clock.h"
 #include "luma/core/display.h"
+#include "luma/ui/theme.h"
 
 namespace luma {
 
 void formatCivilTime(const CivilTime& time, char* out, unsigned out_size);
 
-void drawTitleHeader(DisplaySurface& display, const char* title);
-void drawLauncherHeader(DisplaySurface& display, const uint16_t* logo, const char* time);
-void drawMenuItem(DisplaySurface& display, Rect bounds, const char* label, bool selected);
-void drawList(DisplaySurface& display, const char* const* items, int count, int selected);
-void drawDialog(DisplaySurface& display, const char* title, const char* body);
-void drawKeyHint(DisplaySurface& display, const char* hint);
-void drawAppCard(DisplaySurface& display, int column, int row, const char* name, Color color,
-                 bool selected);
+void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
+                   const char* title, const char* time);
+void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                  const char* label, bool selected, const char* value = nullptr);
+void drawList(DisplaySurface& display, const theme::Palette& palette, const char* const* items,
+              int count, int selected);
+void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
+                const char* body);
+
+struct KeyHint {
+    const char* key;
+    const char* label;
+};
+
+void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
+                     int count);
+void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,
+                 const char* name, Color color, bool selected);
 
 }  // namespace luma
