@@ -25,6 +25,9 @@ struct Rect {
 struct TextStyle {
     Color color;
     int size;
+    bool bold;
+
+    TextStyle(Color color, int size, bool bold = false) : color(color), size(size), bold(bold) {}
 };
 
 class DisplaySurface {

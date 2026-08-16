@@ -1,11 +1,19 @@
 #include "luma/ui/components.h"
 
+#include "luma/ui/font.h"
 #include "luma/ui/layout.h"
 #include "luma/ui/theme.h"
 
 #include <cstdio>
 
 namespace luma {
+namespace {
+
+int headerTextY() { return (layout::kHeaderHeight - font::kGlyphHeight) / 2; }
+
+int centeredY(int box_y, int box_h) { return box_y + (box_h - font::kGlyphHeight) / 2; }
+
+}  // namespace
 
 void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
     if (out == nullptr || out_size == 0) {
@@ -21,15 +29,19 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
 
 void drawTitleHeader(DisplaySurface& display, const char* title) {
     display.fillRect(layout::kHeader, theme::kCanvas);
-    display.drawText({6, 12}, {theme::kPrimaryText, 1}, title != nullptr ? title : "");
+    display.drawText({layout::kChromeInset, headerTextY()}, {theme::kPrimaryText, 1},
+                     title != nullptr ? title : "");
 }
 
 void drawLauncherHeader(DisplaySurface& display, const uint16_t* logo, const char* time) {
     display.fillRect(layout::kHeader, theme::kCanvas);
     if (logo != nullptr) {
-        display.drawBitmap({6, 6}, layout::kHeaderLogoSize, layout::kHeaderLogoSize, logo);
+        display.drawBitmap({layout::kHeaderLogoX, layout::kHeaderLogoY}, layout::kHeaderLogoSize,
+                           layout::kHeaderLogoSize, logo);
     }
-    display.drawText({198, 12}, {theme::kPrimaryText, 1}, time != nullptr ? time : "--:--");
+    const char* label = time != nullptr ? time : "--:--";
+    const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
+    display.drawText({time_x, headerTextY()}, {theme::kPrimaryText, 1}, label);
 }
 
 void drawMenuItem(DisplaySurface& display, Rect bounds, const char* label, bool selected) {
@@ -37,7 +49,7 @@ void drawMenuItem(DisplaySurface& display, Rect bounds, const char* label, bool 
     if (selected) {
         display.drawRect(bounds, theme::kAccent);
     }
-    display.drawText({bounds.x + 4, bounds.y + 3},
+    display.drawText({bounds.x + 4, centeredY(bounds.y, bounds.h)},
                      {selected ? theme::kPrimaryText : theme::kSecondaryText, 1},
                      label != nullptr ? label : "");
 }
@@ -62,21 +74,18 @@ void drawDialog(DisplaySurface& display, const char* title, const char* body) {
 
 void drawKeyHint(DisplaySurface& display, const char* hint) {
     display.fillRect(layout::kFooter, theme::kCanvas);
-    display.drawText({6, 123}, {theme::kSecondaryText, 1}, hint != nullptr ? hint : "");
+    display.drawText({layout::kChromeInset, centeredY(layout::kFooter.y, layout::kFooter.h)},
+                     {theme::kSecondaryText, 1}, hint != nullptr ? hint : "");
 }
 
 void drawAppCard(DisplaySurface& display, int column, int row, const char* name, Color color,
                  bool selected) {
     const Rect bounds = layout::appCardBounds(column, row);
-    display.fillRoundRect(bounds, layout::kCardRadius, theme::kCanvas);
+    display.fillRoundRect(bounds, layout::kCardRadius, selected ? color : theme::kCanvas);
     display.drawRoundRect(bounds, layout::kCardRadius, color);
-    if (selected) {
-        const Rect inner{bounds.x + 1, bounds.y + 1, bounds.w - 2, bounds.h - 2};
-        display.drawRoundRect(inner, layout::kCardRadius, color);
-    }
 
     const Rect icon{bounds.x + 3, bounds.y + 3, layout::kCardIconSize, layout::kCardIconSize};
-    display.fillRoundRect(icon, layout::kCardIconRadius, color);
+    display.fillRoundRect(icon, layout::kCardIconRadius, selected ? theme::kCanvas : color);
 
     char initial[2] = {'?', '\0'};
     if (name != nullptr && name[0] != '\0') {
@@ -85,8 +94,13 @@ void drawAppCard(DisplaySurface& display, int column, int row, const char* name,
             initial[0] = static_cast<char>(initial[0] - 'a' + 'A');
         }
     }
-    display.drawText({icon.x + 4, icon.y + 4}, {theme::kCanvas, 1}, initial);
-    display.drawText({bounds.x + 23, bounds.y + 7}, {theme::kPrimaryText, 1},
+
+    const Color letter_color = selected ? color : theme::kCanvas;
+    const Color name_color = selected ? theme::kCanvas : theme::kPrimaryText;
+    const int letter_w = font::glyphWidth(true);
+    display.drawText({icon.x + (icon.w - letter_w) / 2, icon.y + (icon.h - font::kGlyphHeight) / 2},
+                     {letter_color, 1, true}, initial);
+    display.drawText({bounds.x + 23, centeredY(bounds.y, bounds.h)}, {name_color, 1},
                      name != nullptr ? name : "");
 }
 

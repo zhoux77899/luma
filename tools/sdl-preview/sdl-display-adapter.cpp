@@ -1,6 +1,6 @@
 #include "sdl-display-adapter.h"
 
-#include "sdl-font.h"
+#include "luma/ui/font.h"
 
 #include <SDL.h>
 
@@ -178,26 +178,6 @@ void SdlDisplayAdapter::drawRect(Rect rect, Color color) {
     }
 }
 
-void SdlDisplayAdapter::drawGlyph(int x, int y, char character, int scale, Color color) {
-    unsigned char code = static_cast<unsigned char>(character);
-    if (code < 32 || code > 127) {
-        code = '?';
-    }
-    const uint8_t* glyph = font::kGlyphs[code - 32];
-    for (int row = 0; row < font::kGlyphHeight; ++row) {
-        for (int column = 0; column < font::kGlyphWidth; ++column) {
-            if ((glyph[row] & (1u << column)) == 0) {
-                continue;
-            }
-            for (int dy = 0; dy < scale; ++dy) {
-                for (int dx = 0; dx < scale; ++dx) {
-                    setPixel(x + column * scale + dx, y + row * scale + dy, color);
-                }
-            }
-        }
-    }
-}
-
 void SdlDisplayAdapter::drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) {
     if (rgb565 == nullptr || width <= 0 || height <= 0) {
         return;
@@ -218,15 +198,7 @@ void SdlDisplayAdapter::drawBitmap(Point origin, int width, int height, const ui
 }
 
 void SdlDisplayAdapter::drawText(Point origin, TextStyle style, const char* text) {
-    if (text == nullptr) {
-        return;
-    }
-    const int scale = style.size < 1 ? 1 : style.size;
-    int x = origin.x;
-    for (const char* cursor = text; *cursor != '\0'; ++cursor) {
-        drawGlyph(x, origin.y, *cursor, scale, style.color);
-        x += font::kGlyphWidth * scale;
-    }
+    font::drawText(origin, style, text, [this](int x, int y, Color color) { setPixel(x, y, color); });
 }
 
 void SdlDisplayAdapter::endFrame() {

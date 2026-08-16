@@ -6,7 +6,7 @@
 namespace luma {
 
 const char* SettingsApp::id() const { return "settings"; }
-const char* SettingsApp::name() const { return "Settings"; }
+const char* SettingsApp::name() const { return "SETTINGS"; }
 
 void SettingsApp::onEnter(AppContext& context) { context_ = &context; }
 

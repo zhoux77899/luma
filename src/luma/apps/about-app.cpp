@@ -6,7 +6,7 @@
 namespace luma {
 
 const char* AboutApp::id() const { return "about"; }
-const char* AboutApp::name() const { return "About"; }
+const char* AboutApp::name() const { return "ABOUT"; }
 
 void AboutApp::onEnter(AppContext& context) { context_ = &context; }
 

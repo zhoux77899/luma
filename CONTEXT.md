@@ -29,6 +29,10 @@ _Avoid_: key event, raw keyboard state
 The App entered after the Boot screen; it is the Home role and the place from which the user opens other Apps.
 _Avoid_: Home (as a type name), menu, desktop, home screen
 
+**App card**:
+A Launcher cell that represents one registered App and is the control that opens it.
+_Avoid_: icon, tile, shortcut button
+
 **Boot screen**:
 The brief Logo splash Luma shows before entering Launcher. It is not an App.
 _Avoid_: splash App, boot App, home splash

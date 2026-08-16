@@ -6,7 +6,7 @@
 namespace luma {
 
 const char* NotesApp::id() const { return "notes"; }
-const char* NotesApp::name() const { return "Notes"; }
+const char* NotesApp::name() const { return "NOTES"; }
 
 void NotesApp::onEnter(AppContext& context) { context_ = &context; }
 

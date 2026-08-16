@@ -27,7 +27,6 @@ public:
 
 private:
     void setPixel(int x, int y, Color color);
-    void drawGlyph(int x, int y, char character, int scale, Color color);
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;

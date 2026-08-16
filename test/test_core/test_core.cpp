@@ -9,6 +9,7 @@
 #include "luma/luma.h"
 #include "luma/platform/host/host-audio-adapter.h"
 #include "luma/ui/components.h"
+#include "luma/ui/font.h"
 #include "luma/ui/layout.h"
 #include "luma/ui/theme.h"
 
@@ -32,6 +33,9 @@ using luma::InputManager;
 using luma::Luma;
 using luma::Settings;
 using luma::layout::appCardBounds;
+using luma::layout::kHeaderLogoSize;
+using luma::layout::kHeaderLogoX;
+using luma::layout::kHeaderLogoY;
 using luma::theme::kAccent;
 using luma::theme::kTsuyukusa;
 using luma::theme::kWakatake;
@@ -189,12 +193,18 @@ void test_luma_enters_launcher_after_boot_timeout() {
 
     TEST_ASSERT_EQUAL_STRING("launcher", luma.currentAppId());
     TEST_ASSERT_TRUE(diagnostics.contains("[APP] enter launcher"));
-    TEST_ASSERT_TRUE(display.hasText("Settings"));
-    TEST_ASSERT_TRUE(display.hasText("About"));
-    TEST_ASSERT_TRUE(display.hasText("Notes"));
+    TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
+    TEST_ASSERT_TRUE(display.hasText("ABOUT"));
+    TEST_ASSERT_TRUE(display.hasText("NOTES"));
     TEST_ASSERT_FALSE(display.hasText("Launcher"));
     TEST_ASSERT_FALSE(display.hasText("Enter Open"));
     TEST_ASSERT_TRUE(display.hasText("--:--"));
+    TEST_ASSERT_TRUE(display.hasBitmap({kHeaderLogoX, kHeaderLogoY}, kHeaderLogoSize,
+                                      kHeaderLogoSize));
+    TEST_ASSERT_TRUE(display.hasFill(appCardBounds(0, 0), kTsuyukusa));
+    const auto selected = appCardBounds(0, 0);
+    const luma::Rect inner{selected.x + 1, selected.y + 1, selected.w - 2, selected.h - 2};
+    TEST_ASSERT_FALSE(display.hasStroke(inner, kTsuyukusa));
 }
 
 void test_luma_boot_skips_on_input() {
@@ -305,7 +315,7 @@ void test_launcher_confirm_opens_settings() {
     luma.update();
 
     TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
-    TEST_ASSERT_TRUE(display.hasText("Settings"));
+    TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("Coming soon"));
     TEST_ASSERT_TRUE(display.hasText("Esc Back"));
 }
@@ -345,10 +355,12 @@ void test_launcher_navigation_stays_in_bounds() {
     luma.begin();
     enterLauncher(luma, clock);
     TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kTsuyukusa));
+    TEST_ASSERT_TRUE(display.hasFill(appCardBounds(0, 0), kTsuyukusa));
 
     input.push(makeAction(InputAction::Right));
     luma.update();
     TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kYamabuki));
+    TEST_ASSERT_TRUE(display.hasFill(appCardBounds(1, 0), kYamabuki));
 
     input.push(makeAction(InputAction::Left));
     luma.update();
@@ -466,6 +478,15 @@ void test_file_storage_keeps_previous_file_when_replace_fails() {
     TEST_ASSERT_EQUAL_STRING("keep-me", buffer);
 }
 
+void test_ui_font_lowercase_is_not_shifted_by_backslash_comment() {
+    // A trailing "// \" comment splices out the next glyph and shifts a-z by +1
+    // (Settings -> Sfuujoht, About -> Acpvu).
+    TEST_ASSERT_EQUAL_HEX16(0x6000, luma::font::glyphRows('e', false)[4]);
+    TEST_ASSERT_EQUAL_HEX16(0xF000, luma::font::glyphRows('e', false)[6]);
+    TEST_ASSERT_EQUAL_HEX16(0xE000, luma::font::glyphRows(']', false)[1]);
+    TEST_ASSERT_EQUAL_HEX16(0x8000, luma::font::glyphRows('b', false)[2]);
+}
+
 void test_host_audio_emits_event_log() {
     FakeDiagnostics diagnostics;
     luma::HostAudioAdapter audio(diagnostics);
@@ -499,6 +520,7 @@ int main() {
     RUN_TEST(test_in_memory_storage_round_trips_notes);
     RUN_TEST(test_file_storage_persists_across_instances);
     RUN_TEST(test_file_storage_keeps_previous_file_when_replace_fails);
+    RUN_TEST(test_ui_font_lowercase_is_not_shifted_by_backslash_comment);
     RUN_TEST(test_host_audio_emits_event_log);
     return UNITY_END();
 }

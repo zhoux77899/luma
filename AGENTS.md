@@ -122,7 +122,7 @@ For a normal code or configuration change, completion means:
 
 The current firmware's device-level smoke check is:
 
-- Display shows the Boot screen Logo, then Launcher with Settings, About, and Notes.
+- Display shows the Boot screen Logo, then Launcher with SETTINGS, ABOUT, and NOTES.
 - Serial monitor prints `[BOOT] Luma Cardputer ADV started`.
 - App transitions emit `[APP] enter` / `[APP] exit`.
 - Typed keys may emit `[KEY]`; they are not echoed on the boot screen.

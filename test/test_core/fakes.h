@@ -95,6 +95,25 @@ public:
         }
         return false;
     }
+
+    bool hasFill(Rect rect, Color color) const {
+        for (const auto& fill : fills) {
+            if (rectsEqual(fill.rect, rect) && colorsEqual(fill.color, color)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasBitmap(Point origin, int width, int height) const {
+        for (const auto& bitmap : bitmaps) {
+            if (bitmap.origin.x == origin.x && bitmap.origin.y == origin.y &&
+                bitmap.width == width && bitmap.height == height) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 class FakeAudio : public Audio {
