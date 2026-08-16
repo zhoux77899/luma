@@ -3,9 +3,8 @@
 ## Project purpose
 
 Luma is an Arduino/C++ firmware project for the M5Stack Cardputer ADV. The current
-milestone is a small hardware-validation firmware that proves the display, keyboard,
-and serial monitor path before the system, shell, SDK, and application layers are
-introduced.
+milestone is the Core coordinator: Luma boots into Launcher and routes input,
+lifecycle, and shared service contracts without Cardputer includes in Core.
 
 C++ and C are the primary implementation languages. Use Python only for auxiliary
 tooling, automation, or host-side verification.
@@ -46,10 +45,9 @@ or dependency migration is explicitly requested.
 - `README.md`: user-facing setup and hardware workflow
 - `LICENSE`: MIT License
 
-Keep `main.cpp` small. Put reusable behavior behind focused modules as the project
-grows, with the planned direction of `system/`, `shell/`, `sdk/`, and `apps/`. Add an
-abstraction when it removes repeated hardware or application knowledge from callers;
-keep the current direct implementation while there is only one behavior or adapter.
+Keep `main.cpp` small: serial setup, `M5Cardputer.begin`, one hardware update, and
+`luma.update()`. Shared behavior lives in `include/luma` and `src/luma`. Cardputer
+adapters stay in `src/luma/platform/cardputer`.
 
 ## Firmware conventions
 
@@ -86,6 +84,8 @@ Useful commands:
 & $pio device list
 & $pio device monitor
 & $pio run --target clean
+$env:PATH = "$env:USERPROFILE\.platformio\packages\toolchain-gccmingw32\bin;" + $env:PATH
+& $pio test -e native
 ```
 
 Hardware upload changes the connected device and requires an explicit user request:
@@ -109,9 +109,10 @@ For a normal code or configuration change, completion means:
 
 The current firmware's device-level smoke check is:
 
-- Display shows `Luma / Cardputer ADV` and the keyboard readiness message.
+- Display shows the boot title `Luma / Cardputer ADV`, then Launcher.
 - Serial monitor prints `[BOOT] Luma Cardputer ADV started`.
-- Typed characters are echoed to the display and logged with `[KEY]`.
+- App transitions emit `[APP] enter` / `[APP] exit`.
+- Typed keys may emit `[KEY]`; they are not echoed on the boot screen.
 
 ## Dependency and safety rules
 
