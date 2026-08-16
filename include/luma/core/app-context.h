@@ -18,6 +18,8 @@ public:
 
     void requestRedraw();
     bool takeRedrawRequest();
+    void requestEnter(const char* id);
+    const char* takeEnterRequest();
 
 private:
     DisplaySurface& display_;
@@ -25,6 +27,7 @@ private:
     Storage& storage_;
     Clock& clock_;
     bool redraw_requested_ = false;
+    const char* enter_id_ = nullptr;
 };
 
 }  // namespace luma

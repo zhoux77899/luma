@@ -1,5 +1,7 @@
 #include "cardputer-display-adapter.h"
 
+#include "luma/ui/font.h"
+
 #include <M5Cardputer.h>
 
 namespace luma {
@@ -28,11 +30,33 @@ void CardputerDisplayAdapter::drawRect(Rect rect, Color color) {
     M5Cardputer.Display.drawRect(rect.x, rect.y, rect.w, rect.h, to565(color));
 }
 
+void CardputerDisplayAdapter::fillRoundRect(Rect rect, int radius, Color color) {
+    M5Cardputer.Display.fillRoundRect(rect.x, rect.y, rect.w, rect.h, radius, to565(color));
+}
+
+void CardputerDisplayAdapter::drawRoundRect(Rect rect, int radius, Color color) {
+    M5Cardputer.Display.drawRoundRect(rect.x, rect.y, rect.w, rect.h, radius, to565(color));
+}
+
 void CardputerDisplayAdapter::drawText(Point origin, TextStyle style, const char* text) {
-    M5Cardputer.Display.setTextSize(style.size);
-    M5Cardputer.Display.setTextColor(to565(style.color));
-    M5Cardputer.Display.setCursor(origin.x, origin.y);
-    M5Cardputer.Display.print(text);
+    font::drawText(origin, style, text, [](int x, int y, Color color) {
+        M5Cardputer.Display.drawPixel(x, y, to565(color));
+    });
+}
+
+void CardputerDisplayAdapter::drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) {
+    if (rgb565 == nullptr || width <= 0 || height <= 0) {
+        return;
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const uint16_t pixel = rgb565[y * width + x];
+            if (pixel == 0) {
+                continue;
+            }
+            M5Cardputer.Display.drawPixel(origin.x + x, origin.y + y, pixel);
+        }
+    }
 }
 
 void CardputerDisplayAdapter::endFrame() {}

@@ -26,8 +26,20 @@ One frame of normalized input: an action, optional text, and pressed/repeated fl
 _Avoid_: key event, raw keyboard state
 
 **Launcher**:
-The App entered after boot; the place from which the user opens other Apps.
+The App entered after the Boot screen; it is the Home role and the place from which the user opens other Apps.
 _Avoid_: Home (as a type name), menu, desktop, home screen
+
+**App card**:
+A Launcher cell that represents one registered App and is the control that opens it.
+_Avoid_: icon, tile, shortcut button
+
+**Boot screen**:
+The brief Logo splash Luma shows before entering Launcher. It is not an App.
+_Avoid_: splash App, boot App, home splash
+
+**Clock**:
+The service that provides frame time and local civil time. Civil time is invalid until the device clock is set.
+_Avoid_: RTC, wall clock service, timer
 
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.

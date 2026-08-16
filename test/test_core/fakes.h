@@ -34,24 +34,86 @@ public:
     }
 };
 
+struct DrawnShape {
+    Rect rect;
+    Color color;
+};
+
+struct DrawnBitmap {
+    Point origin;
+    int width = 0;
+    int height = 0;
+};
+
 class FakeDisplay : public DisplaySurface {
 public:
     std::vector<std::string> texts;
+    std::vector<DrawnShape> fills;
+    std::vector<DrawnShape> strokes;
+    std::vector<DrawnBitmap> bitmaps;
     int draw_text_count = 0;
     bool begun = false;
 
     void begin() override { begun = true; }
     int width() const override { return 240; }
     int height() const override { return 135; }
-    void beginFrame() override {}
+    void beginFrame() override {
+        texts.clear();
+        fills.clear();
+        strokes.clear();
+        bitmaps.clear();
+        draw_text_count = 0;
+    }
     void clear(Color) override {}
-    void fillRect(Rect, Color) override {}
-    void drawRect(Rect, Color) override {}
+    void fillRect(Rect rect, Color color) override { fills.push_back({rect, color}); }
+    void drawRect(Rect rect, Color color) override { strokes.push_back({rect, color}); }
+    void fillRoundRect(Rect rect, int, Color color) override { fills.push_back({rect, color}); }
+    void drawRoundRect(Rect rect, int, Color color) override { strokes.push_back({rect, color}); }
     void drawText(Point, TextStyle, const char* text) override {
         ++draw_text_count;
         texts.push_back(text);
     }
+    void drawBitmap(Point origin, int width, int height, const uint16_t*) override {
+        bitmaps.push_back({origin, width, height});
+    }
     void endFrame() override {}
+
+    bool hasText(const char* text) const {
+        for (const auto& entry : texts) {
+            if (entry == text) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasStroke(Rect rect, Color color) const {
+        for (const auto& stroke : strokes) {
+            if (rectsEqual(stroke.rect, rect) && colorsEqual(stroke.color, color)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasFill(Rect rect, Color color) const {
+        for (const auto& fill : fills) {
+            if (rectsEqual(fill.rect, rect) && colorsEqual(fill.color, color)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasBitmap(Point origin, int width, int height) const {
+        for (const auto& bitmap : bitmaps) {
+            if (bitmap.origin.x == origin.x && bitmap.origin.y == origin.y &&
+                bitmap.width == width && bitmap.height == height) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 class FakeAudio : public Audio {
@@ -66,7 +128,10 @@ public:
 class FakeClock : public Clock {
 public:
     uint32_t now = 0;
+    CivilTime civil{};
+
     uint32_t millis() const override { return now; }
+    CivilTime localTime() const override { return civil; }
 };
 
 class FakeInputSource : public InputSource {

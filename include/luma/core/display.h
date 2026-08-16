@@ -25,6 +25,9 @@ struct Rect {
 struct TextStyle {
     Color color;
     int size;
+    bool bold;
+
+    TextStyle(Color color, int size, bool bold = false) : color(color), size(size), bold(bold) {}
 };
 
 class DisplaySurface {
@@ -37,8 +40,19 @@ public:
     virtual void clear(Color color) = 0;
     virtual void fillRect(Rect rect, Color color) = 0;
     virtual void drawRect(Rect rect, Color color) = 0;
+    virtual void fillRoundRect(Rect rect, int radius, Color color) = 0;
+    virtual void drawRoundRect(Rect rect, int radius, Color color) = 0;
     virtual void drawText(Point origin, TextStyle style, const char* text) = 0;
+    virtual void drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) = 0;
     virtual void endFrame() = 0;
 };
+
+inline bool colorsEqual(Color left, Color right) {
+    return left.r == right.r && left.g == right.g && left.b == right.b;
+}
+
+inline bool rectsEqual(Rect left, Rect right) {
+    return left.x == right.x && left.y == right.y && left.w == right.w && left.h == right.h;
+}
 
 }  // namespace luma

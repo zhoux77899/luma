@@ -68,6 +68,10 @@ void AppManager::dispatch(const InputFrame& input) {
     if (current_ != nullptr) {
         current_->update(input);
     }
+
+    if (const char* id = context_.takeEnterRequest()) {
+        enter(id);
+    }
 }
 
 void AppManager::drawIfNeeded() {
@@ -85,6 +89,10 @@ App* AppManager::current() const { return current_; }
 const char* AppManager::currentId() const {
     return current_ != nullptr ? current_->id() : "";
 }
+
+size_t AppManager::appCount() const { return app_count_; }
+
+const AppDescriptor& AppManager::appAt(size_t index) const { return apps_[index]; }
 
 App* AppManager::findById(const char* id) const {
     if (id == nullptr) {
