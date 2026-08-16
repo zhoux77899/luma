@@ -201,6 +201,20 @@ void SdlDisplayAdapter::drawText(Point origin, TextStyle style, const char* text
     font::drawText(origin, style, text, [this](int x, int y, Color color) { setPixel(x, y, color); });
 }
 
+void SdlDisplayAdapter::setBrightness(uint8_t percent) {
+    brightness_ = percent > 100 ? 100 : percent;
+}
+
+uint32_t SdlDisplayAdapter::dimPixel(uint32_t pixel) const {
+    if (brightness_ >= 100) {
+        return pixel;
+    }
+    const uint32_t r = ((pixel >> 16) & 0xFFu) * brightness_ / 100u;
+    const uint32_t g = ((pixel >> 8) & 0xFFu) * brightness_ / 100u;
+    const uint32_t b = (pixel & 0xFFu) * brightness_ / 100u;
+    return (255u << 24) | (r << 16) | (g << 8) | b;
+}
+
 void SdlDisplayAdapter::endFrame() {
     if (renderer_ == nullptr || texture_ == nullptr) {
         return;
@@ -224,7 +238,12 @@ void SdlDisplayAdapter::endFrame() {
     dest.x = (window_w - dest.w) / 2;
     dest.y = (window_h - dest.h) / 2;
 
-    SDL_UpdateTexture(texture_, nullptr, pixels_, kWidth * static_cast<int>(sizeof(uint32_t)));
+    uint32_t framed[kWidth * kHeight];
+    for (int i = 0; i < kWidth * kHeight; ++i) {
+        framed[i] = dimPixel(pixels_[i]);
+    }
+
+    SDL_UpdateTexture(texture_, nullptr, framed, kWidth * static_cast<int>(sizeof(uint32_t)));
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderClear(renderer_);
     SDL_RenderCopy(renderer_, texture_, nullptr, &dest);

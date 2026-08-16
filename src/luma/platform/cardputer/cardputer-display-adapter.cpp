@@ -59,6 +59,13 @@ void CardputerDisplayAdapter::drawBitmap(Point origin, int width, int height, co
     }
 }
 
+void CardputerDisplayAdapter::setBrightness(uint8_t percent) {
+    if (percent > 100) {
+        percent = 100;
+    }
+    M5Cardputer.Display.setBrightness(static_cast<uint8_t>((percent * 255) / 100));
+}
+
 void CardputerDisplayAdapter::endFrame() {}
 
 }  // namespace luma

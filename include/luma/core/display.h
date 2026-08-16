@@ -44,6 +44,7 @@ public:
     virtual void drawRoundRect(Rect rect, int radius, Color color) = 0;
     virtual void drawText(Point origin, TextStyle style, const char* text) = 0;
     virtual void drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) = 0;
+    virtual void setBrightness(uint8_t percent) { (void)percent; }
     virtual void endFrame() = 0;
 };
 

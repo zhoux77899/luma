@@ -4,6 +4,7 @@
 #include "luma/core/app-context.h"
 #include "luma/core/app-manager.h"
 #include "luma/core/display.h"
+#include "luma/core/settings.h"
 #include "luma/ui/components.h"
 #include "luma/ui/renderer.h"
 #include "luma/ui/theme.h"
@@ -15,7 +16,7 @@ namespace luma {
 LauncherApp::LauncherApp(AppManager& manager) : manager_(manager) {}
 
 const char* LauncherApp::id() const { return AppManager::kLauncherId; }
-const char* LauncherApp::name() const { return "Launcher"; }
+const char* LauncherApp::name() const { return "LAUNCHER"; }
 
 void LauncherApp::onEnter(AppContext& context) {
     context_ = &context;
@@ -105,12 +106,13 @@ void LauncherApp::draw() {
     char time_label[8] = {};
     formatCivilTime(context_->clock().localTime(), time_label, sizeof(time_label));
 
-    UiRenderer renderer(context_->display());
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme());
+    UiRenderer renderer(context_->display(), palette);
     renderer.beginFrame();
     renderer.clearAppCanvas();
-    drawLauncherHeader(renderer.surface(), assets::kLogoHeader, time_label);
+    drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label);
     for (int i = 0; i < count; ++i) {
-        drawAppCard(renderer.surface(), i % 2, i / 2, names[i], theme::appCardColor(i),
+        drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], theme::appCardColor(i),
                     i == selected_);
     }
     renderer.endFrame();

@@ -9,6 +9,7 @@ constexpr int kWidth = 240;
 constexpr int kHeight = 135;
 constexpr int kHeaderHeight = 32;
 constexpr int kFooterHeight = 15;
+constexpr int kHeaderTitleSize = 2;
 constexpr int kHeaderLogoSize = 28;
 constexpr int kHeaderLogoX = 6;
 constexpr int kHeaderLogoY = 2;

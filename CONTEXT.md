@@ -26,7 +26,7 @@ One frame of normalized input: an action, optional text, and pressed/repeated fl
 _Avoid_: key event, raw keyboard state
 
 **Launcher**:
-The App entered after the Boot screen; it is the Home role and the place from which the user opens other Apps.
+The App entered after the Boot screen; it is the Home role and the place from which the user opens other Apps. Its Header shows the product word LUMA, not the App name.
 _Avoid_: Home (as a type name), menu, desktop, home screen
 
 **App card**:
@@ -46,8 +46,16 @@ A statically compiled, registered program the user can enter from Launcher and l
 _Avoid_: plugin, package, activity, window
 
 **Settings**:
-The persisted device preferences: brightness, sound, and theme.
+The persisted device preferences: brightness, sound, and Theme preference.
 _Avoid_: Preferences, config
+
+**Theme preference**:
+The Dark or Light appearance stored in Settings. 0 is Dark; 1 is Light.
+_Avoid_: high contrast, Theme (for the stored 0/1 value)
+
+**Design tokens**:
+The DESIGN.md colors in `luma::theme`. Theme preference selects which canvas and text mapping those tokens use.
+_Avoid_: Theme preference, palette name as a product setting
 
 **Settings App**:
 The App that edits Settings.

@@ -5,6 +5,7 @@
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
 #include "luma/core/input-source.h"
+#include "luma/core/in-memory-storage.h"
 #include "luma/core/storage.h"
 #include "luma/core/app.h"
 #include "luma/core/app-context.h"
@@ -53,6 +54,7 @@ public:
     std::vector<DrawnBitmap> bitmaps;
     int draw_text_count = 0;
     bool begun = false;
+    uint8_t brightness = 255;
 
     void begin() override { begun = true; }
     int width() const override { return 240; }
@@ -76,6 +78,7 @@ public:
     void drawBitmap(Point origin, int width, int height, const uint16_t*) override {
         bitmaps.push_back({origin, width, height});
     }
+    void setBrightness(uint8_t percent) override { brightness = percent; }
     void endFrame() override {}
 
     bool hasText(const char* text) const {
@@ -147,6 +150,26 @@ public:
         }
         frame = frames[next++];
         return true;
+    }
+};
+
+class ControllableStorage : public InMemoryStorage {
+public:
+    bool write_succeeds = true;
+    bool save_pref_succeeds = true;
+
+    bool savePref(const char* key, const void* data, size_t size) override {
+        if (!save_pref_succeeds) {
+            return false;
+        }
+        return InMemoryStorage::savePref(key, data, size);
+    }
+
+    bool writeFileAtomic(const char* path, const char* data, size_t length) override {
+        if (!write_succeeds) {
+            return false;
+        }
+        return InMemoryStorage::writeFileAtomic(path, data, length);
     }
 };
 
