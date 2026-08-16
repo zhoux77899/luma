@@ -40,7 +40,7 @@ PETAL = [
     (500.0, 100.0),
 ]
 
-PETAL_SCALE = 0.86
+PETAL_SCALE = 0.95
 PETAL_SCALE_ANCHOR = (500.0, 100.0)
 
 COLORS = (
@@ -152,7 +152,7 @@ def write_header(path: Path, symbol: str, size: int, pixels: list[int]) -> None:
 def main() -> None:
     INCLUDE.mkdir(parents=True, exist_ok=True)
     write_header(INCLUDE / "luma-logo-boot.h", "LogoBoot", 96, rasterize(96))
-    write_header(INCLUDE / "luma-logo-header.h", "LogoHeader", 20, rasterize(20))
+    write_header(INCLUDE / "luma-logo-header.h", "LogoHeader", 28, rasterize(28))
 
 
 if __name__ == "__main__":

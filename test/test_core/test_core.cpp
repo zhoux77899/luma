@@ -33,6 +33,9 @@ using luma::Luma;
 using luma::Settings;
 using luma::layout::appCardBounds;
 using luma::theme::kAccent;
+using luma::theme::kTsuyukusa;
+using luma::theme::kWakatake;
+using luma::theme::kYamabuki;
 using luma::test::CountingStorage;
 using luma::test::FakeAudio;
 using luma::test::FakeClock;
@@ -209,7 +212,7 @@ void test_luma_boot_skips_on_input() {
     luma.update();
 
     TEST_ASSERT_EQUAL_STRING("launcher", luma.currentAppId());
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kTsuyukusa));
 }
 
 void test_luma_draws_only_when_dirty() {
@@ -341,21 +344,21 @@ void test_launcher_navigation_stays_in_bounds() {
 
     luma.begin();
     enterLauncher(luma, clock);
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kTsuyukusa));
 
     input.push(makeAction(InputAction::Right));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kYamabuki));
 
     input.push(makeAction(InputAction::Left));
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kWakatake));
 
     input.push(makeAction(InputAction::Right));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kWakatake));
 }
 
 void test_launcher_header_updates_when_minute_changes() {

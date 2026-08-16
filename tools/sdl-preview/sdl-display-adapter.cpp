@@ -89,6 +89,81 @@ void SdlDisplayAdapter::fillRect(Rect rect, Color color) {
     }
 }
 
+void SdlDisplayAdapter::fillRoundRect(Rect rect, int radius, Color color) {
+    int r = radius;
+    if (r < 0) {
+        r = 0;
+    }
+    if (r * 2 > rect.w) {
+        r = rect.w / 2;
+    }
+    if (r * 2 > rect.h) {
+        r = rect.h / 2;
+    }
+    if (r <= 0) {
+        fillRect(rect, color);
+        return;
+    }
+
+    fillRect({rect.x + r, rect.y, rect.w - 2 * r, rect.h}, color);
+    fillRect({rect.x, rect.y + r, r, rect.h - 2 * r}, color);
+    fillRect({rect.x + rect.w - r, rect.y + r, r, rect.h - 2 * r}, color);
+
+    const int r2 = r * r;
+    for (int dy = 0; dy < r; ++dy) {
+        for (int dx = 0; dx < r; ++dx) {
+            if (dx * dx + dy * dy > r2) {
+                continue;
+            }
+            setPixel(rect.x + r - 1 - dx, rect.y + r - 1 - dy, color);
+            setPixel(rect.x + rect.w - r + dx, rect.y + r - 1 - dy, color);
+            setPixel(rect.x + r - 1 - dx, rect.y + rect.h - r + dy, color);
+            setPixel(rect.x + rect.w - r + dx, rect.y + rect.h - r + dy, color);
+        }
+    }
+}
+
+void SdlDisplayAdapter::drawRoundRect(Rect rect, int radius, Color color) {
+    int r = radius;
+    if (r < 0) {
+        r = 0;
+    }
+    if (r * 2 > rect.w) {
+        r = rect.w / 2;
+    }
+    if (r * 2 > rect.h) {
+        r = rect.h / 2;
+    }
+    if (r <= 0) {
+        drawRect(rect, color);
+        return;
+    }
+
+    for (int x = rect.x + r; x < rect.x + rect.w - r; ++x) {
+        setPixel(x, rect.y, color);
+        setPixel(x, rect.y + rect.h - 1, color);
+    }
+    for (int y = rect.y + r; y < rect.y + rect.h - r; ++y) {
+        setPixel(rect.x, y, color);
+        setPixel(rect.x + rect.w - 1, y, color);
+    }
+
+    const int r2 = r * r;
+    const int inner = (r - 1) * (r - 1);
+    for (int dy = 0; dy < r; ++dy) {
+        for (int dx = 0; dx < r; ++dx) {
+            const int d2 = dx * dx + dy * dy;
+            if (d2 > r2 || d2 < inner) {
+                continue;
+            }
+            setPixel(rect.x + r - 1 - dx, rect.y + r - 1 - dy, color);
+            setPixel(rect.x + rect.w - r + dx, rect.y + r - 1 - dy, color);
+            setPixel(rect.x + r - 1 - dx, rect.y + rect.h - r + dy, color);
+            setPixel(rect.x + rect.w - r + dx, rect.y + rect.h - r + dy, color);
+        }
+    }
+}
+
 void SdlDisplayAdapter::drawRect(Rect rect, Color color) {
     if (rect.w <= 0 || rect.h <= 0) {
         return;

@@ -21,15 +21,15 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
 
 void drawTitleHeader(DisplaySurface& display, const char* title) {
     display.fillRect(layout::kHeader, theme::kCanvas);
-    display.drawText({6, 8}, {theme::kPrimaryText, 1}, title != nullptr ? title : "");
+    display.drawText({6, 12}, {theme::kPrimaryText, 1}, title != nullptr ? title : "");
 }
 
 void drawLauncherHeader(DisplaySurface& display, const uint16_t* logo, const char* time) {
     display.fillRect(layout::kHeader, theme::kCanvas);
     if (logo != nullptr) {
-        display.drawBitmap({2, 2}, layout::kHeaderLogoSize, layout::kHeaderLogoSize, logo);
+        display.drawBitmap({6, 6}, layout::kHeaderLogoSize, layout::kHeaderLogoSize, logo);
     }
-    display.drawText({198, 8}, {theme::kPrimaryText, 1}, time != nullptr ? time : "--:--");
+    display.drawText({198, 12}, {theme::kPrimaryText, 1}, time != nullptr ? time : "--:--");
 }
 
 void drawMenuItem(DisplaySurface& display, Rect bounds, const char* label, bool selected) {
@@ -65,11 +65,28 @@ void drawKeyHint(DisplaySurface& display, const char* hint) {
     display.drawText({6, 123}, {theme::kSecondaryText, 1}, hint != nullptr ? hint : "");
 }
 
-void drawAppCard(DisplaySurface& display, int column, int row, const char* name, bool selected) {
+void drawAppCard(DisplaySurface& display, int column, int row, const char* name, Color color,
+                 bool selected) {
     const Rect bounds = layout::appCardBounds(column, row);
-    display.fillRect(bounds, theme::kCanvas);
-    display.drawRect(bounds, selected ? theme::kAccent : theme::kSecondaryText);
-    display.drawText({bounds.x + 6, bounds.y + 7}, {theme::kPrimaryText, 1},
+    display.fillRoundRect(bounds, layout::kCardRadius, theme::kCanvas);
+    display.drawRoundRect(bounds, layout::kCardRadius, color);
+    if (selected) {
+        const Rect inner{bounds.x + 1, bounds.y + 1, bounds.w - 2, bounds.h - 2};
+        display.drawRoundRect(inner, layout::kCardRadius, color);
+    }
+
+    const Rect icon{bounds.x + 3, bounds.y + 3, layout::kCardIconSize, layout::kCardIconSize};
+    display.fillRoundRect(icon, layout::kCardIconRadius, color);
+
+    char initial[2] = {'?', '\0'};
+    if (name != nullptr && name[0] != '\0') {
+        initial[0] = name[0];
+        if (initial[0] >= 'a' && initial[0] <= 'z') {
+            initial[0] = static_cast<char>(initial[0] - 'a' + 'A');
+        }
+    }
+    display.drawText({icon.x + 4, icon.y + 4}, {theme::kCanvas, 1}, initial);
+    display.drawText({bounds.x + 23, bounds.y + 7}, {theme::kPrimaryText, 1},
                      name != nullptr ? name : "");
 }
 

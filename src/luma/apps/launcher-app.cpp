@@ -6,6 +6,7 @@
 #include "luma/core/display.h"
 #include "luma/ui/components.h"
 #include "luma/ui/renderer.h"
+#include "luma/ui/theme.h"
 
 #include <cstring>
 
@@ -109,7 +110,8 @@ void LauncherApp::draw() {
     renderer.clearAppCanvas();
     drawLauncherHeader(renderer.surface(), assets::kLogoHeader, time_label);
     for (int i = 0; i < count; ++i) {
-        drawAppCard(renderer.surface(), i % 2, i / 2, names[i], i == selected_);
+        drawAppCard(renderer.surface(), i % 2, i / 2, names[i], theme::appCardColor(i),
+                    i == selected_);
     }
     renderer.endFrame();
 }

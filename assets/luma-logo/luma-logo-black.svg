@@ -5,15 +5,15 @@
   </defs>
   <rect width="1000" height="1000" fill="#000000" />
   <g shape-rendering="geometricPrecision">
-    <use href="#petal" fill="#8B81C3" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+    <use href="#petal" fill="#8B81C3" transform="translate(500 100) scale(0.95) translate(-500 -100)" />
     <g transform="rotate(90 500 500)">
-      <use href="#petal" fill="#F9BF45" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+      <use href="#petal" fill="#F9BF45" transform="translate(500 100) scale(0.95) translate(-500 -100)" />
     </g>
     <g transform="rotate(180 500 500)">
-      <use href="#petal" fill="#A8D8B9" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+      <use href="#petal" fill="#A8D8B9" transform="translate(500 100) scale(0.95) translate(-500 -100)" />
     </g>
     <g transform="rotate(270 500 500)">
-      <use href="#petal" fill="#F596AA" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+      <use href="#petal" fill="#F596AA" transform="translate(500 100) scale(0.95) translate(-500 -100)" />
     </g>
   </g>
 </svg>

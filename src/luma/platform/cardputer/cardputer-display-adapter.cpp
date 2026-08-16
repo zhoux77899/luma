@@ -28,6 +28,14 @@ void CardputerDisplayAdapter::drawRect(Rect rect, Color color) {
     M5Cardputer.Display.drawRect(rect.x, rect.y, rect.w, rect.h, to565(color));
 }
 
+void CardputerDisplayAdapter::fillRoundRect(Rect rect, int radius, Color color) {
+    M5Cardputer.Display.fillRoundRect(rect.x, rect.y, rect.w, rect.h, radius, to565(color));
+}
+
+void CardputerDisplayAdapter::drawRoundRect(Rect rect, int radius, Color color) {
+    M5Cardputer.Display.drawRoundRect(rect.x, rect.y, rect.w, rect.h, radius, to565(color));
+}
+
 void CardputerDisplayAdapter::drawText(Point origin, TextStyle style, const char* text) {
     M5Cardputer.Display.setTextSize(style.size);
     M5Cardputer.Display.setTextColor(to565(style.color));

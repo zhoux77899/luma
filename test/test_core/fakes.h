@@ -67,6 +67,8 @@ public:
     void clear(Color) override {}
     void fillRect(Rect rect, Color color) override { fills.push_back({rect, color}); }
     void drawRect(Rect rect, Color color) override { strokes.push_back({rect, color}); }
+    void fillRoundRect(Rect rect, int, Color color) override { fills.push_back({rect, color}); }
+    void drawRoundRect(Rect rect, int, Color color) override { strokes.push_back({rect, color}); }
     void drawText(Point, TextStyle, const char* text) override {
         ++draw_text_count;
         texts.push_back(text);

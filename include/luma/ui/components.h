@@ -13,6 +13,7 @@ void drawMenuItem(DisplaySurface& display, Rect bounds, const char* label, bool 
 void drawList(DisplaySurface& display, const char* const* items, int count, int selected);
 void drawDialog(DisplaySurface& display, const char* title, const char* body);
 void drawKeyHint(DisplaySurface& display, const char* hint);
-void drawAppCard(DisplaySurface& display, int column, int row, const char* name, bool selected);
+void drawAppCard(DisplaySurface& display, int column, int row, const char* name, Color color,
+                 bool selected);
 
 }  // namespace luma
