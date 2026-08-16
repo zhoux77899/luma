@@ -18,4 +18,12 @@ bool AppContext::takeRedrawRequest() {
     return requested;
 }
 
+void AppContext::requestEnter(const char* id) { enter_id_ = id; }
+
+const char* AppContext::takeEnterRequest() {
+    const char* id = enter_id_;
+    enter_id_ = nullptr;
+    return id;
+}
+
 }  // namespace luma

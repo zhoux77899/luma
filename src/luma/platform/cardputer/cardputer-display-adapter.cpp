@@ -35,6 +35,21 @@ void CardputerDisplayAdapter::drawText(Point origin, TextStyle style, const char
     M5Cardputer.Display.print(text);
 }
 
+void CardputerDisplayAdapter::drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) {
+    if (rgb565 == nullptr || width <= 0 || height <= 0) {
+        return;
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const uint16_t pixel = rgb565[y * width + x];
+            if (pixel == 0) {
+                continue;
+            }
+            M5Cardputer.Display.drawPixel(origin.x + x, origin.y + y, pixel);
+        }
+    }
+}
+
 void CardputerDisplayAdapter::endFrame() {}
 
 }  // namespace luma

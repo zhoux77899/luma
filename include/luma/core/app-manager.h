@@ -31,6 +31,8 @@ public:
 
     App* current() const;
     const char* currentId() const;
+    size_t appCount() const;
+    const AppDescriptor& appAt(size_t index) const;
 
 private:
     App* findById(const char* id) const;

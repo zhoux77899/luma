@@ -7,6 +7,7 @@ namespace luma {
 class CardputerClock : public Clock {
 public:
     uint32_t millis() const override;
+    CivilTime localTime() const override;
 };
 
 }  // namespace luma

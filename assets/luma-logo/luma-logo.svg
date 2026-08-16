@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="title">
+  <title id="title">Luma logo</title>
+  <defs>
+    <path id="petal" d="M 500 100 C 509 100 518 107 528 116 C 570 153 612 201 636 247 C 657 294 648 342 610 382 C 577 416 544 451 510 484 C 504 490 496 490 490 484 C 456 451 423 416 390 382 C 352 342 343 294 364 247 C 388 201 430 153 472 116 C 482 107 491 100 500 100 Z" />
+  </defs>
+  <g shape-rendering="geometricPrecision">
+    <use href="#petal" fill="#8B81C3" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+    <g transform="rotate(90 500 500)">
+      <use href="#petal" fill="#F9BF45" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+    </g>
+    <g transform="rotate(180 500 500)">
+      <use href="#petal" fill="#A8D8B9" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+    </g>
+    <g transform="rotate(270 500 500)">
+      <use href="#petal" fill="#F596AA" transform="translate(500 100) scale(0.86) translate(-500 -100)" />
+    </g>
+  </g>
+</svg>

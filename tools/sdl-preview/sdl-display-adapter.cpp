@@ -123,6 +123,25 @@ void SdlDisplayAdapter::drawGlyph(int x, int y, char character, int scale, Color
     }
 }
 
+void SdlDisplayAdapter::drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) {
+    if (rgb565 == nullptr || width <= 0 || height <= 0) {
+        return;
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const uint16_t pixel = rgb565[y * width + x];
+            if (pixel == 0) {
+                continue;
+            }
+            Color color;
+            color.r = static_cast<uint8_t>((pixel >> 11) << 3);
+            color.g = static_cast<uint8_t>(((pixel >> 5) & 0x3F) << 2);
+            color.b = static_cast<uint8_t>((pixel & 0x1F) << 3);
+            setPixel(origin.x + x, origin.y + y, color);
+        }
+    }
+}
+
 void SdlDisplayAdapter::drawText(Point origin, TextStyle style, const char* text) {
     if (text == nullptr) {
         return;
