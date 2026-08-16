@@ -1,8 +1,8 @@
 # Luma for M5Stack Cardputer ADV
 
-This project is a minimal PlatformIO + Arduino firmware for the M5Stack Cardputer ADV.
-The first milestone verifies the display, keyboard, and serial monitor before the Luma
-system, shell, SDK, and applications are added.
+Luma is a statically compiled multi-application firmware for the M5Stack Cardputer ADV.
+The current milestone is the Core coordinator: boot reaches Launcher, and Apps share a
+platform-independent lifecycle and input frame.
 
 ## Build
 
@@ -11,6 +11,14 @@ PATH, run the bundled executable directly:
 
 ```powershell
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" run
+```
+
+Host Core tests (requires a host `g++` on PATH). On Windows, PlatformIO's
+MinGW package is enough:
+
+```powershell
+$env:PATH = "$env:USERPROFILE\.platformio\packages\toolchain-gccmingw32\bin;" + $env:PATH
+& "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" test -e native
 ```
 
 ## Upload
@@ -32,5 +40,6 @@ The firmware uses 115200 baud:
 & "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe" device monitor
 ```
 
-The initial firmware prints `[BOOT]` and `[KEY]` messages and echoes typed characters
-to the display.
+Cold boot prints `[BOOT] Luma Cardputer ADV started`, shows the boot screen, then
+enters Launcher. App transitions emit `[APP]` lines. Typed keys are reported as
+`[KEY]` diagnostics; they are no longer echoed onto the boot screen.

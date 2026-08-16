@@ -5,8 +5,25 @@ Luma is the firmware product that runs on the M5Stack Cardputer ADV.
 ## Language
 
 **Luma**:
-The firmware product that runs on Cardputer ADV.
+The firmware product that runs on Cardputer ADV, and the coordinator that boots the device and runs each frame.
 _Avoid_: OS, system, shell
+
+**Core**:
+The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, and display contracts.
+_Avoid_: shell, OS, runtime
+
+**AppContext**:
+The service bag handed to an App on enter: display, Settings, Storage, Clock, and redraw.
+
+**AppManager**:
+The owner of the one current App and the static registry that routes enter, exit, Back, and shortcuts.
+
+**InputManager**:
+The single reader of an InputSource; it reports InputFrame values and does not decide which App to open.
+
+**InputFrame**:
+One frame of normalized input: an action, optional text, and pressed/repeated flags.
+_Avoid_: key event, raw keyboard state
 
 **Launcher**:
 The App entered after boot; the place from which the user opens other Apps.
