@@ -46,9 +46,9 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
 }
 
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
-                  const char* label, bool selected, const char* value) {
+                  const char* label, bool selected, const char* value, bool focused) {
     display.fillRect(bounds, palette.canvas);
-    if (selected) {
+    if (selected && focused) {
         display.drawRect(bounds, palette.accent);
     }
     display.drawText({bounds.x + 4, centeredY(bounds.y, bounds.h)},

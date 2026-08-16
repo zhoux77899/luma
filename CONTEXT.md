@@ -58,7 +58,19 @@ The DESIGN.md colors in `luma::theme`. Theme preference selects which canvas and
 _Avoid_: Theme preference, palette name as a product setting
 
 **Settings App**:
-The App that edits Settings.
+The App that edits Settings. It uses a category pane and a detail pane.
+
+**Settings category**:
+One of Display, Sound, Network, Power, or System in the Settings App.
+_Avoid_: tab, menu group
+
+**Category pane**:
+The left list of Settings categories.
+_Avoid_: sidebar, tab bar
+
+**Detail pane**:
+The right list of values or entries for the selected Settings category.
+_Avoid_: content pane, inspector
 
 **Notes**:
 The App that edits a bounded plain-text Notes document.

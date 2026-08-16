@@ -40,4 +40,12 @@ bool AppContext::takeUiSound() {
     return requested;
 }
 
+void AppContext::consumeBack() { back_consumed_ = true; }
+
+bool AppContext::takeBackConsumed() {
+    const bool consumed = back_consumed_;
+    back_consumed_ = false;
+    return consumed;
+}
+
 }  // namespace luma

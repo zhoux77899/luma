@@ -118,10 +118,11 @@ void test_app_manager_back_returns_to_launcher() {
     fixture.manager.drawIfNeeded();
 
     TEST_ASSERT_EQUAL_STRING("launcher", fixture.manager.currentId());
-    TEST_ASSERT_EQUAL_UINT(3, fixture.log.size());
-    TEST_ASSERT_EQUAL_STRING("about:exit", fixture.log[0].c_str());
-    TEST_ASSERT_EQUAL_STRING("launcher:enter", fixture.log[1].c_str());
-    TEST_ASSERT_EQUAL_STRING("launcher:draw", fixture.log[2].c_str());
+    TEST_ASSERT_EQUAL_UINT(4, fixture.log.size());
+    TEST_ASSERT_EQUAL_STRING("about:update", fixture.log[0].c_str());
+    TEST_ASSERT_EQUAL_STRING("about:exit", fixture.log[1].c_str());
+    TEST_ASSERT_EQUAL_STRING("launcher:enter", fixture.log[2].c_str());
+    TEST_ASSERT_EQUAL_STRING("launcher:draw", fixture.log[3].c_str());
 }
 
 void test_app_manager_launcher_back_is_noop() {
@@ -321,17 +322,21 @@ void test_launcher_confirm_opens_settings() {
 
     TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
+    TEST_ASSERT_TRUE(display.hasText("Display"));
+    TEST_ASSERT_TRUE(display.hasText("Sound"));
+    TEST_ASSERT_TRUE(display.hasText("Network"));
+    TEST_ASSERT_TRUE(display.hasText("Power"));
+    TEST_ASSERT_TRUE(display.hasText("System"));
     TEST_ASSERT_TRUE(display.hasText("Brightness"));
     TEST_ASSERT_TRUE(display.hasText("80%"));
-    TEST_ASSERT_TRUE(display.hasText("Sound"));
-    TEST_ASSERT_TRUE(display.hasText("On"));
     TEST_ASSERT_TRUE(display.hasText("Theme"));
     TEST_ASSERT_TRUE(display.hasText("Dark"));
-    TEST_ASSERT_TRUE(display.hasText("About"));
     TEST_ASSERT_TRUE(display.hasText("Ent"));
     TEST_ASSERT_TRUE(display.hasText("ok"));
     TEST_ASSERT_TRUE(display.hasText("Esc"));
     TEST_ASSERT_TRUE(display.hasText("back"));
+    TEST_ASSERT_FALSE(display.hasText("On"));
+    TEST_ASSERT_FALSE(display.hasText("About"));
     TEST_ASSERT_FALSE(display.hasText("Coming soon"));
 }
 
@@ -579,6 +584,8 @@ void test_settings_app_steps_brightness_and_applies() {
     enterLauncher(luma, clock);
     input.push(makeAction(InputAction::Confirm));
     luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
     audio.events.clear();
     input.push(makeAction(InputAction::Right));
     luma.update();
@@ -604,8 +611,12 @@ void test_settings_flush_on_exit_before_debounce() {
     enterLauncher(luma, clock);
     input.push(makeAction(InputAction::Confirm));
     luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
     clock.now = 2000;
     input.push(makeAction(InputAction::Right));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
     luma.update();
     input.push(makeAction(InputAction::Back));
     luma.update();
@@ -632,9 +643,11 @@ void test_settings_sound_off_does_not_play_click() {
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
     input.push(makeAction(InputAction::Right));
     luma.update();
-    input.push(makeAction(InputAction::Up));
+    input.push(makeAction(InputAction::Back));
     luma.update();
     audio.events.clear();
     input.push(makeAction(InputAction::Confirm));
@@ -674,6 +687,10 @@ void test_settings_opens_about_with_build_identity() {
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
 
@@ -683,6 +700,128 @@ void test_settings_opens_about_with_build_identity() {
     TEST_ASSERT_TRUE(display.hasText("Cardputer ADV"));
     TEST_ASSERT_TRUE(display.hasText("native"));
     TEST_ASSERT_TRUE(display.hasText("MIT"));
+}
+
+void test_settings_category_left_right_does_not_change_brightness() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+    input.push(makeAction(InputAction::Left));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+    TEST_ASSERT_EQUAL_UINT8(80, settings.brightness());
+    TEST_ASSERT_TRUE(display.hasText("80%"));
+}
+
+void test_settings_detail_back_stays_in_settings() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    input.push(makeAction(InputAction::Right));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+    TEST_ASSERT_EQUAL_UINT8(90, settings.brightness());
+    TEST_ASSERT_FALSE(diagnostics.contains("[APP] exit settings"));
+}
+
+void test_settings_detail_up_down_stays_bounded() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+    TEST_ASSERT_EQUAL_UINT8(1, settings.theme());
+    TEST_ASSERT_TRUE(display.hasText("Light"));
+    TEST_ASSERT_EQUAL_UINT8(80, settings.brightness());
+}
+
+void test_settings_placeholder_confirm_stays() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+
+    TEST_ASSERT_TRUE(display.hasText("Wi-Fi"));
+    TEST_ASSERT_TRUE(display.hasText("Time zone"));
+    TEST_ASSERT_TRUE(display.hasText("--"));
+
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Battery"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
 }
 
 void test_header_time_updates_outside_launcher() {
@@ -943,6 +1082,10 @@ int main() {
     RUN_TEST(test_settings_sound_off_does_not_play_click);
     RUN_TEST(test_theme_palette_inverts_for_light);
     RUN_TEST(test_settings_opens_about_with_build_identity);
+    RUN_TEST(test_settings_category_left_right_does_not_change_brightness);
+    RUN_TEST(test_settings_detail_back_stays_in_settings);
+    RUN_TEST(test_settings_detail_up_down_stays_bounded);
+    RUN_TEST(test_settings_placeholder_confirm_stays);
     RUN_TEST(test_header_time_updates_outside_launcher);
     RUN_TEST(test_notes_round_trips_multiline_text);
     RUN_TEST(test_notes_deletes_in_the_middle);
