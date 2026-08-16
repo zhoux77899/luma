@@ -102,17 +102,18 @@ The `luma-cardputer-vX.Y.Z-flash.zip` asset contains the split images, `flash.js
 
 ## Development
 
-The firmware uses PlatformIO Core 6.1.19, Python 3.11, the Arduino framework, and
-C++17. Install PlatformIO from a Python 3.11 installation:
+The firmware uses PlatformIO, Python 3.11, the Arduino framework, and C++17.
+Install the PlatformIO version pinned in `requirements.txt` from a Python 3.11
+installation:
 
 ```powershell
 # Windows PowerShell
-py -3.11 -m pip install "platformio==6.1.19"
+py -3.11 -m pip install -r requirements.txt
 ```
 
 ```bash
 # macOS / Linux
-python3.11 -m pip install "platformio==6.1.19"
+python3.11 -m pip install -r requirements.txt
 ```
 
 Run the following commands from the repository root:
