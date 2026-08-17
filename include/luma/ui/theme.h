@@ -35,20 +35,11 @@ struct Palette {
     Color card;
 };
 
-inline Palette paletteFor(uint8_t theme_pref) {
+inline Palette paletteFor(uint8_t theme_pref, Color accent = kAccent) {
     if (theme_pref == 1) {
-        return Palette{kGofun, kGofun, kSumi, kGinnezumi, kBenimidori, kShironezumi};
+        return Palette{kGofun, kGofun, kSumi, kGinnezumi, accent, kShironezumi};
     }
-    return Palette{kKuro, kKuro, kGofun, kGinnezumi, kBenimidori, kSumi};
-}
-
-inline Color appCardColor(int index) {
-    constexpr Color kColors[] = {kTsuyukusa, kYamabuki, kWakatake, kBenihi,
-                                 kAraisyu,   kAomidori, kMizu,     kTsutsuji};
-    if (index < 0) {
-        return kTsuyukusa;
-    }
-    return kColors[index % 8];
+    return Palette{kKuro, kKuro, kGofun, kGinnezumi, accent, kSumi};
 }
 
 }  // namespace theme

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "luma/core/display.h"
 #include "luma/core/input-frame.h"
 
 namespace luma {
@@ -13,6 +14,7 @@ public:
     virtual const char* id() const = 0;
     virtual const char* name() const = 0;
     virtual char shortcut() const { return '\0'; }
+    virtual Color accent() const;
 
     virtual void onEnter(AppContext& context) { (void)context; }
     virtual void onExit() {}

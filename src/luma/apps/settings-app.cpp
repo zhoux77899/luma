@@ -74,6 +74,7 @@ void drawBarRow(DisplaySurface& display, const theme::Palette& palette, Rect bou
 
 const char* SettingsApp::id() const { return "settings"; }
 const char* SettingsApp::name() const { return "SETTINGS"; }
+Color SettingsApp::accent() const { return theme::kTsuyukusa; }
 
 void SettingsApp::onEnter(AppContext& context) {
     context_ = &context;
@@ -271,7 +272,7 @@ void SettingsApp::draw() {
     }
 
     Settings& settings = context_->settings();
-    const theme::Palette palette = theme::paletteFor(settings.theme());
+    const theme::Palette palette = theme::paletteFor(settings.theme(), accent());
     UiRenderer renderer(context_->display(), palette);
     renderer.beginFrame();
     renderer.clearAppCanvas();

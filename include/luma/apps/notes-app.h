@@ -14,6 +14,7 @@ public:
 
     const char* id() const override;
     const char* name() const override;
+    Color accent() const override;
 
     void onEnter(AppContext& context) override;
     void onExit() override;

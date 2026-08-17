@@ -1,0 +1,3 @@
+# Accent is an App identity, not a Launcher grid slot
+
+Selection used a single Theme color (Benimidori). Launcher already painted each App card a different support color by launchable index, so inserting an App would recolor the others and the in-App selection color would still be Benimidori. Accent is now the App's identity: Launcher shows it on that App's card, and the App uses it for selection and interactive emphasis. Settings is Tsuyukusa, About is Yamabuki, Notes is Wakatake. Launcher and Apps that do not declare one keep Benimidori as the Theme default. This revises ADR-0005's "selection is always Benimidori".

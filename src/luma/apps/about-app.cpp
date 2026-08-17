@@ -12,6 +12,7 @@ namespace luma {
 
 const char* AboutApp::id() const { return "about"; }
 const char* AboutApp::name() const { return "ABOUT"; }
+Color AboutApp::accent() const { return theme::kYamabuki; }
 
 void AboutApp::onEnter(AppContext& context) { context_ = &context; }
 
@@ -22,7 +23,7 @@ void AboutApp::draw() {
         return;
     }
 
-    const theme::Palette palette = theme::paletteFor(context_->settings().theme());
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
     UiRenderer renderer(context_->display(), palette);
     renderer.beginFrame();
     renderer.clearAppCanvas();

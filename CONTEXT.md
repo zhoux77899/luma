@@ -30,7 +30,7 @@ The App entered after the Boot screen; it is the Home role and the place from wh
 _Avoid_: Home (as a type name), menu, desktop, home screen
 
 **App card**:
-A Launcher cell that represents one registered App and is the control that opens it.
+A Launcher cell that represents one registered App, shows that App's Accent, and is the control that opens it.
 _Avoid_: icon, tile, shortcut button
 
 **Boot screen**:
@@ -44,6 +44,10 @@ _Avoid_: RTC, wall clock service, timer
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.
 _Avoid_: plugin, package, activity, window
+
+**Accent**:
+The color that identifies an App. Launcher shows it on that App's card, and the App uses it for selection and interactive emphasis. An App that does not declare one uses Benimidori, the Theme's default selection color.
+_Avoid_: Emphasis, highlight, Theme preference, card color
 
 **Settings**:
 The persisted device preferences: brightness, Volume, and Theme preference.

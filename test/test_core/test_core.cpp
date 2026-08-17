@@ -5,7 +5,9 @@
 #include "luma/core/file-storage.h"
 #include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
+#include "luma/apps/about-app.h"
 #include "luma/apps/notes-app.h"
+#include "luma/apps/settings-app.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
 #include "luma/platform/host/host-audio-adapter.h"
@@ -338,6 +340,8 @@ void test_launcher_confirm_opens_settings() {
     TEST_ASSERT_FALSE(display.hasText("On"));
     TEST_ASSERT_FALSE(display.hasText("About"));
     TEST_ASSERT_FALSE(display.hasText("Coming soon"));
+    TEST_ASSERT_TRUE(display.hasFill({9, 37, 82, 14}, kTsuyukusa));
+    TEST_ASSERT_FALSE(display.hasFill({9, 37, 82, 14}, kAccent));
 }
 
 void test_stub_back_returns_to_launcher() {
@@ -716,6 +720,21 @@ void test_theme_palette_inverts_for_light() {
     TEST_ASSERT_TRUE(luma::colorsEqual(light.secondary_text, luma::theme::kGinnezumi));
     TEST_ASSERT_TRUE(luma::colorsEqual(light.primary_text, luma::theme::kSumi));
     TEST_ASSERT_TRUE(luma::colorsEqual(light.boot_canvas, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dark.accent, kAccent));
+    TEST_ASSERT_TRUE(luma::colorsEqual(light.accent, kAccent));
+}
+
+void test_app_accent_is_identity_color() {
+    luma::SettingsApp settings_app;
+    luma::AboutApp about_app;
+    luma::NotesApp notes_app;
+    std::vector<std::string> log;
+    RecordingApp extra("extra", "Extra", 'x', log);
+
+    TEST_ASSERT_TRUE(luma::colorsEqual(settings_app.accent(), kTsuyukusa));
+    TEST_ASSERT_TRUE(luma::colorsEqual(about_app.accent(), kYamabuki));
+    TEST_ASSERT_TRUE(luma::colorsEqual(notes_app.accent(), kWakatake));
+    TEST_ASSERT_TRUE(luma::colorsEqual(extra.accent(), kAccent));
 }
 
 void test_settings_opens_about_with_build_identity() {
@@ -1134,6 +1153,7 @@ int main() {
     RUN_TEST(test_settings_volume_zero_does_not_play_click);
     RUN_TEST(test_settings_volume_steps_and_applies);
     RUN_TEST(test_theme_palette_inverts_for_light);
+    RUN_TEST(test_app_accent_is_identity_color);
     RUN_TEST(test_settings_opens_about_with_build_identity);
     RUN_TEST(test_settings_category_left_right_does_not_change_brightness);
     RUN_TEST(test_settings_detail_back_stays_in_settings);
