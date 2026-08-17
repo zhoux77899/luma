@@ -54,14 +54,24 @@ def collect_sdl_runtime(installed_root: Path, triplet: str) -> list[Path]:
     for folder in (installed / "bin", installed / "lib"):
         if not folder.is_dir():
             continue
-        for path in folder.iterdir():
-            if is_sdl_runtime(path):
+        for path in folder.rglob("*"):
+            if path.is_file() and is_sdl_runtime(path):
                 found.append(path)
     return found
 
 
 def staging_has_sdl_runtime(dest_dir: Path) -> bool:
     return any(is_sdl_runtime(path) for path in dest_dir.iterdir())
+
+
+def executable_needs_sdl_runtime(executable: Path) -> bool:
+    if sys.platform == "darwin":
+        listing = subprocess.check_output(["otool", "-L", str(executable)], text=True)
+        return any("sdl2" in line.lower() for line in listing.splitlines()[1:])
+    if sys.platform.startswith("linux"):
+        listing = subprocess.check_output(["ldd", str(executable)], text=True)
+        return any("sdl2" in line.lower() for line in listing.splitlines())
+    return True
 
 
 def copy_runtime(path: Path, dest_dir: Path) -> Path:
@@ -159,7 +169,7 @@ def main(argv: list[str]) -> int:
     for runtime in collect_sdl_runtime(args.installed_root.resolve(), args.triplet):
         copy_runtime(runtime, staging_dir)
 
-    if not staging_has_sdl_runtime(staging_dir):
+    if not staging_has_sdl_runtime(staging_dir) and executable_needs_sdl_runtime(dest_exe):
         print(
             f"SDL runtime not found beside {executable} or under "
             f"{args.installed_root.resolve() / args.triplet}",
