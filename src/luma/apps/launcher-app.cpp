@@ -33,7 +33,7 @@ int LauncherApp::launchableCount() const {
     return count;
 }
 
-void LauncherApp::collectLaunchable(const char** ids, const char** names) const {
+void LauncherApp::collectLaunchable(const char** ids, const char** names, Color* accents) const {
     int count = 0;
     for (size_t i = 0; i < manager_.appCount(); ++i) {
         const AppDescriptor& descriptor = manager_.appAt(i);
@@ -42,6 +42,8 @@ void LauncherApp::collectLaunchable(const char** ids, const char** names) const 
         }
         ids[count] = descriptor.id;
         names[count] = descriptor.name;
+        accents[count] =
+            descriptor.instance != nullptr ? descriptor.instance->accent() : theme::kAccent;
         ++count;
     }
 }
@@ -85,7 +87,8 @@ void LauncherApp::update(const InputFrame& input) {
     if (input.action == InputAction::Confirm) {
         const char* ids[kMaxLaunchable] = {};
         const char* names[kMaxLaunchable] = {};
-        collectLaunchable(ids, names);
+        Color accents[kMaxLaunchable] = {};
+        collectLaunchable(ids, names, accents);
         context_->requestEnter(ids[selected_]);
         return;
     }
@@ -100,7 +103,8 @@ void LauncherApp::draw() {
 
     const char* ids[kMaxLaunchable] = {};
     const char* names[kMaxLaunchable] = {};
-    collectLaunchable(ids, names);
+    Color accents[kMaxLaunchable] = {};
+    collectLaunchable(ids, names, accents);
     const int count = launchableCount();
 
     char time_label[8] = {};
@@ -112,7 +116,7 @@ void LauncherApp::draw() {
     renderer.clearAppCanvas();
     drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label);
     for (int i = 0; i < count; ++i) {
-        drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], theme::appCardColor(i),
+        drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], accents[i],
                     i == selected_);
     }
     renderer.endFrame();

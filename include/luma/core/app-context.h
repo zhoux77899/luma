@@ -25,6 +25,8 @@ public:
     const char* takeEnterRequest();
     void requestUiSound();
     bool takeUiSound();
+    void consumeBack();
+    bool takeBackConsumed();
 
 private:
     DisplaySurface& display_;
@@ -35,6 +37,7 @@ private:
     bool redraw_requested_ = false;
     const char* enter_id_ = nullptr;
     bool ui_sound_requested_ = false;
+    bool back_consumed_ = false;
 };
 
 }  // namespace luma

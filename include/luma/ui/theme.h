@@ -8,11 +8,12 @@ namespace theme {
 constexpr Color kKuro{0x08, 0x08, 0x08};
 constexpr Color kSumi{0x1C, 0x1C, 0x1C};
 constexpr Color kGofun{0xFF, 0xFF, 0xFB};
+constexpr Color kShironezumi{0xBD, 0xC0, 0xBA};
 constexpr Color kGinnezumi{0x91, 0x98, 0x9F};
 constexpr Color kBenimidori{0x7B, 0x90, 0xD2};
 
 constexpr Color kBootCanvas = kKuro;
-constexpr Color kCanvas = kSumi;
+constexpr Color kCanvas = kKuro;
 constexpr Color kPrimaryText = kGofun;
 constexpr Color kSecondaryText = kGinnezumi;
 constexpr Color kAccent = kBenimidori;
@@ -31,22 +32,14 @@ struct Palette {
     Color primary_text;
     Color secondary_text;
     Color accent;
+    Color card;
 };
 
-inline Palette paletteFor(uint8_t theme_pref) {
+inline Palette paletteFor(uint8_t theme_pref, Color accent = kAccent) {
     if (theme_pref == 1) {
-        return Palette{kGofun, kGofun, kSumi, kGinnezumi, kBenimidori};
+        return Palette{kGofun, kGofun, kSumi, kGinnezumi, accent, kShironezumi};
     }
-    return Palette{kKuro, kSumi, kGofun, kGinnezumi, kBenimidori};
-}
-
-inline Color appCardColor(int index) {
-    constexpr Color kColors[] = {kTsuyukusa, kYamabuki, kWakatake, kBenihi,
-                                 kAraisyu,   kAomidori, kMizu,     kTsutsuji};
-    if (index < 0) {
-        return kTsuyukusa;
-    }
-    return kColors[index % 8];
+    return Palette{kKuro, kKuro, kGofun, kGinnezumi, accent, kSumi};
 }
 
 }  // namespace theme

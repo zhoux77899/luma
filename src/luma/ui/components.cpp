@@ -46,9 +46,9 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
 }
 
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
-                  const char* label, bool selected, const char* value) {
+                  const char* label, bool selected, const char* value, bool focused) {
     display.fillRect(bounds, palette.canvas);
-    if (selected) {
+    if (selected && focused) {
         display.drawRect(bounds, palette.accent);
     }
     display.drawText({bounds.x + 4, centeredY(bounds.y, bounds.h)},
@@ -57,6 +57,19 @@ void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect b
     if (value != nullptr && value[0] != '\0') {
         const int value_x = bounds.x + bounds.w - 4 - font::textWidth(value, 1);
         display.drawText({value_x, centeredY(bounds.y, bounds.h)}, {palette.primary_text, 1}, value);
+    }
+}
+
+void drawProgressBar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                     uint8_t percent) {
+    display.fillRect(bounds, palette.secondary_text);
+    if (percent == 0 || bounds.w <= 0) {
+        return;
+    }
+    const unsigned clamped = percent > 100 ? 100 : percent;
+    const int fill_w = static_cast<int>((static_cast<unsigned>(bounds.w) * clamped) / 100);
+    if (fill_w > 0) {
+        display.fillRect({bounds.x, bounds.y, fill_w, bounds.h}, palette.accent);
     }
 }
 

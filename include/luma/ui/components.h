@@ -4,6 +4,8 @@
 #include "luma/core/display.h"
 #include "luma/ui/theme.h"
 
+#include <cstdint>
+
 namespace luma {
 
 void formatCivilTime(const CivilTime& time, char* out, unsigned out_size);
@@ -11,7 +13,10 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size);
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
                    const char* title, const char* time);
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
-                  const char* label, bool selected, const char* value = nullptr);
+                  const char* label, bool selected, const char* value = nullptr,
+                  bool focused = true);
+void drawProgressBar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                     uint8_t percent);
 void drawList(DisplaySurface& display, const theme::Palette& palette, const char* const* items,
               int count, int selected);
 void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,

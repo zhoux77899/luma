@@ -6,6 +6,8 @@ namespace luma {
 
 HostAudioAdapter::HostAudioAdapter(Diagnostics& diagnostics) : diagnostics_(diagnostics) {}
 
+void HostAudioAdapter::setVolume(uint8_t percent) { volume_ = percent; }
+
 void HostAudioAdapter::play(const char* event) { diagnostics_.emit("AUDIO", event); }
 
 }  // namespace luma

@@ -122,9 +122,11 @@ public:
 class FakeAudio : public Audio {
 public:
     bool begun = false;
+    uint8_t volume = 80;
     std::vector<std::string> events;
 
     void begin() override { begun = true; }
+    void setVolume(uint8_t percent) override { volume = percent; }
     void play(const char* event) override { events.push_back(event); }
 };
 

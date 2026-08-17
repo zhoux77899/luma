@@ -8,6 +8,7 @@ class AboutApp : public App {
 public:
     const char* id() const override;
     const char* name() const override;
+    Color accent() const override;
 
     void onEnter(AppContext& context) override;
     void update(const InputFrame& input) override;

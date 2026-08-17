@@ -27,6 +27,7 @@ constexpr int kMaxCols = (layout::kWidth - 2 * layout::kChromeInset) / font::kGl
 
 const char* NotesApp::id() const { return "notes"; }
 const char* NotesApp::name() const { return "NOTES"; }
+Color NotesApp::accent() const { return theme::kWakatake; }
 
 void NotesApp::onEnter(AppContext& context) {
     context_ = &context;
@@ -251,7 +252,7 @@ void NotesApp::draw() {
         return;
     }
 
-    const theme::Palette palette = theme::paletteFor(context_->settings().theme());
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
     UiRenderer renderer(context_->display(), palette);
     renderer.beginFrame();
     renderer.clearAppCanvas();

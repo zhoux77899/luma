@@ -60,7 +60,10 @@ void AppManager::dispatch(const InputFrame& input) {
 
     if (input.action == InputAction::Back) {
         if (current_ != nullptr && !currentIsLauncher()) {
-            enter(kLauncherId);
+            current_->update(input);
+            if (!context_.takeBackConsumed()) {
+                enter(kLauncherId);
+            }
         }
         return;
     }
