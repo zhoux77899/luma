@@ -95,7 +95,6 @@ $env:PATH = "$env:USERPROFILE\.platformio\packages\toolchain-gccmingw32\bin;" + 
 SDL preview (requires CMake, vcpkg, and `VCPKG_ROOT`):
 
 ```powershell
-vcpkg install --triplet x64-windows --manifest-dir tools/sdl-preview
 cmake -S tools/sdl-preview -B build/sdl-preview `
     -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 cmake --build build/sdl-preview --config Debug --target luma-sdl-preview

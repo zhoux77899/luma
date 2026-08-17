@@ -48,8 +48,8 @@ def is_sdl_runtime(path: Path) -> bool:
     return "sdl2" in path.name.lower() and is_shared_library(path)
 
 
-def collect_sdl_runtime(vcpkg_root: Path, triplet: str) -> list[Path]:
-    installed = vcpkg_root / "installed" / triplet
+def collect_sdl_runtime(installed_root: Path, triplet: str) -> list[Path]:
+    installed = installed_root / triplet
     found: list[Path] = []
     for folder in (installed / "bin", installed / "lib"):
         if not folder.is_dir():
@@ -58,6 +58,10 @@ def collect_sdl_runtime(vcpkg_root: Path, triplet: str) -> list[Path]:
             if is_sdl_runtime(path):
                 found.append(path)
     return found
+
+
+def staging_has_sdl_runtime(dest_dir: Path) -> bool:
+    return any(is_sdl_runtime(path) for path in dest_dir.iterdir())
 
 
 def copy_runtime(path: Path, dest_dir: Path) -> Path:
@@ -125,7 +129,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--triplet", required=True)
-    parser.add_argument("--vcpkg-root", required=True, type=Path)
+    parser.add_argument("--installed-root", required=True, type=Path)
     parser.add_argument("--slug", required=True)
     parser.add_argument("--platform", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -152,8 +156,16 @@ def main(argv: list[str]) -> int:
         make_executable(dest_exe)
 
     copy_beside_executable(executable, staging_dir)
-    for runtime in collect_sdl_runtime(args.vcpkg_root.resolve(), args.triplet):
+    for runtime in collect_sdl_runtime(args.installed_root.resolve(), args.triplet):
         copy_runtime(runtime, staging_dir)
+
+    if not staging_has_sdl_runtime(staging_dir):
+        print(
+            f"SDL runtime not found beside {executable} or under "
+            f"{args.installed_root.resolve() / args.triplet}",
+            file=sys.stderr,
+        )
+        return 1
 
     if sys.platform == "darwin":
         fix_macos_install_names(dest_exe, staging_dir)

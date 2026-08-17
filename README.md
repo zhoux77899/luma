@@ -184,46 +184,23 @@ The SDL preview displays the same Core and Apps on the host. It is a secondary v
 path, not a separate product. See [System and dependency requirements](#system-and-dependency-requirements)
 for the CMake, compiler, vcpkg, and host-triplet requirements.
 
-### Install SDL2
+### Configure the project
 
-Set `VCPKG_ROOT` and install SDL2 with the command for your platform.
+Set `VCPKG_ROOT` to a bootstrapped vcpkg tree. CMake installs SDL2 from
+`tools/sdl-preview/vcpkg.json` during configure. Use `arm64-osx` on Apple Silicon
+and `x64-osx` on Intel Macs when you need to pass `-DVCPKG_TARGET_TRIPLET`.
 
 #### Windows PowerShell
 
 ```powershell
 $env:VCPKG_ROOT = "C:\path\to\vcpkg"
-& "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --manifest-dir tools/sdl-preview
-```
-
-#### macOS
-
-Use `arm64-osx` on Apple Silicon. Replace it with `x64-osx` on Intel Macs.
-
-```bash
-export VCPKG_ROOT="/path/to/vcpkg"
-"$VCPKG_ROOT/vcpkg" install --triplet arm64-osx --manifest-dir tools/sdl-preview
-```
-
-#### Linux
-
-```bash
-export VCPKG_ROOT="/path/to/vcpkg"
-"$VCPKG_ROOT/vcpkg" install --triplet x64-linux --manifest-dir tools/sdl-preview
-```
-
-### Configure the project
-
-Configure the project with the command for your platform.
-
-#### Windows PowerShell
-
-```powershell
 cmake -S tools/sdl-preview -B build/sdl-preview -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 ```
 
 #### macOS / Linux
 
 ```bash
+export VCPKG_ROOT="/path/to/vcpkg"
 cmake -S tools/sdl-preview -B build/sdl-preview \
     -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 ```

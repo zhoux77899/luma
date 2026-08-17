@@ -28,6 +28,7 @@
 
 # Host package manager output
 /tools/sdl-preview/vcpkg_installed/
+/.vcpkg-cache/
 
 # C/C++ build-system output
 /build/
