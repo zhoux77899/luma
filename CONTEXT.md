@@ -102,3 +102,11 @@ _Avoid_: mixer, soundtrack, speaker API
 **SDL preview**:
 The host-side view of the same Apps. Secondary validation, not a second product.
 _Avoid_: emulator, simulator, PC firmware
+
+**Flash package**:
+The zip of split Cardputer ADV flash images and their burn metadata.
+_Avoid_: firmware zip, segmented archive
+
+**Merged image**:
+The complete 8 MB ESP32-S3 flash image written at 0x00000000.
+_Avoid_: combined bin, full flash dump

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -16,6 +17,28 @@ env:
   PYTHON_VERSION: "3.11"
 
 jobs:
+  release-identity:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate release tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Unsupported release tag: ${tag}"
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
+
   native-tests:
     name: Native tests
     runs-on: windows-latest
@@ -50,7 +73,8 @@ jobs:
         run: pio test -e native
 
   build-release:
-    name: Build release assets
+    name: Build Cardputer flash package
+    needs: release-identity
     runs-on: ubuntu-24.04
     steps:
       - name: Check out source
@@ -73,169 +97,75 @@ jobs:
       - name: Install PlatformIO
         run: python -m pip install -r requirements.txt
 
-      - name: Validate release tag
-        id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          tag="${GITHUB_REF_NAME}"
-          if [[ ! "${tag}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-            echo "Unsupported release tag: ${tag}"
-            exit 1
-          fi
-
-          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
-          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
-
       - name: Build Cardputer firmware
         env:
-          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ steps.version.outputs.version }}\"'
+          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ needs.release-identity.outputs.version }}\"'
         run: pio run -e m5stack-cardputer
 
       - name: Build LittleFS image
         env:
-          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ steps.version.outputs.version }}\"'
+          PLATFORMIO_BUILD_FLAGS: '-DLUMA_VERSION=\"${{ needs.release-identity.outputs.version }}\"'
         run: pio run -e m5stack-cardputer --target buildfs
 
-      - name: Package firmware assets
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          STAGING_DIR: ${{ github.workspace }}/release-staging
-        shell: bash
+      - name: Package Cardputer flash assets
         run: |
-          set -euo pipefail
+          bash tools/package-cardputer-flash.sh \
+            --build-dir .pio/build/m5stack-cardputer \
+            --identity "${{ needs.release-identity.outputs.version }}" \
+            --slug "${{ needs.release-identity.outputs.tag }}" \
+            --output-dir cardputer-flash
 
-          build_dir="${GITHUB_WORKSPACE}/.pio/build/m5stack-cardputer"
-          staging_dir="${GITHUB_WORKSPACE}/release-staging"
-          release_dir="${GITHUB_WORKSPACE}/release-assets"
-          merged_name="luma-cardputer-${RELEASE_TAG}-merged.bin"
-          archive_name="luma-cardputer-${RELEASE_TAG}-flash.zip"
-
-          rm -rf "${staging_dir}" "${release_dir}"
-          mkdir -p "${staging_dir}" "${release_dir}"
-
-          for image in bootloader.bin partitions.bin firmware.bin littlefs.bin; do
-            source="${build_dir}/${image}"
-            test -s "${source}"
-            cp "${source}" "${staging_dir}/${image}"
-          done
-
-          pio pkg exec -- esptool.py \
-            --chip esp32s3 \
-            merge_bin \
-            --output "${staging_dir}/${merged_name}" \
-            --flash_size 8MB \
-            --fill-flash-size 8MB \
-            0x00000000 "${staging_dir}/bootloader.bin" \
-            0x00008000 "${staging_dir}/partitions.bin" \
-            0x00010000 "${staging_dir}/firmware.bin" \
-            0x00340000 "${staging_dir}/littlefs.bin"
-
-          test "$(stat -c '%s' "${staging_dir}/${merged_name}")" -eq 8388608
-
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          staging_dir = Path(os.environ["STAGING_DIR"])
-          tag = os.environ["RELEASE_TAG"]
-          version = os.environ["RELEASE_VERSION"]
-          merged_name = f"luma-cardputer-{tag}-merged.bin"
-
-          manifest = {
-              "tag": tag,
-              "version": version,
-              "hardware": "M5Stack Cardputer ADV",
-              "chip": "ESP32-S3",
-              "flash_size": "8MB",
-              "images": [
-                  {"file": "bootloader.bin", "address": "0x00000000"},
-                  {"file": "partitions.bin", "address": "0x00008000"},
-                  {"file": "firmware.bin", "address": "0x00010000"},
-                  {"file": "littlefs.bin", "address": "0x00340000"},
-              ],
-              "merged_image": {
-                  "file": merged_name,
-                  "address": "0x00000000",
-              },
-          }
-
-          (staging_dir / "flash.json").write_text(
-              json.dumps(manifest, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          PY
-
-          cat > "${staging_dir}/FLASHING.md" <<EOF
-          # Luma ${RELEASE_TAG} Cardputer ADV firmware
-
-          The merged image is an 8 MB ESP32-S3 flash image. Write it at address \`0x00000000\`:
-
-          \`\`\`bash
-          esptool.py --chip esp32s3 write_flash 0x00000000 ${merged_name}
-          \`\`\`
-
-          The split images and their addresses are recorded in \`flash.json\`. The package checksum file covers every split image and the merged image.
-          EOF
-
-          (
-            cd "${staging_dir}"
-            sha256sum bootloader.bin partitions.bin firmware.bin littlefs.bin "${merged_name}" > SHA256SUMS
-            sha256sum --check SHA256SUMS
-          )
-
-          cp "${staging_dir}/${merged_name}" "${release_dir}/${merged_name}"
-          (
-            cd "${staging_dir}"
-            zip -q -j "${release_dir}/${archive_name}" ./*
-          )
-
-          unzip -t "${release_dir}/${archive_name}"
-          (
-            cd "${release_dir}"
-            sha256sum "${archive_name}" "${merged_name}" > SHA256SUMS
-            sha256sum --check SHA256SUMS
-          )
-
-          test -s "${release_dir}/${archive_name}"
-          test -s "${release_dir}/${merged_name}"
-          test -s "${release_dir}/SHA256SUMS"
-          find "${release_dir}" -maxdepth 1 -type f -printf '%f\n' | sort
-
-      - name: Upload release assets
+      - name: Upload Cardputer flash package
         uses: actions/upload-artifact@v4
         with:
-          name: release-assets
-          path: release-assets/*
+          name: cardputer-flash
+          path: cardputer-flash/*
           if-no-files-found: error
           retention-days: 7
+
+  sdl-preview:
+    needs: release-identity
+    uses: ./.github/workflows/sdl-preview.yml
+    with:
+      luma-version: ${{ needs.release-identity.outputs.version }}
+      file-slug: ${{ needs.release-identity.outputs.tag }}
 
   release:
     name: Create GitHub Release
     needs:
       - native-tests
       - build-release
+      - sdl-preview
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - name: Download release assets
+      - name: Download build artifacts
         uses: actions/download-artifact@v5
         with:
-          name: release-assets
-          path: release-assets
+          path: collected
 
-      - name: Verify release assets
+      - name: Assemble and verify release assets
         shell: bash
         run: |
           set -euo pipefail
 
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p release-assets
+
+          cp collected/cardputer-flash/luma-cardputer-${tag}-merged.bin release-assets/
+          cp collected/cardputer-flash/luma-cardputer-${tag}-flash.zip release-assets/
+          cp collected/sdl-preview-windows-x64/luma-sdl-preview-${tag}-windows-x64.zip release-assets/
+          cp collected/sdl-preview-macos-arm64/luma-sdl-preview-${tag}-macos-arm64.zip release-assets/
+          cp collected/sdl-preview-macos-x64/luma-sdl-preview-${tag}-macos-x64.zip release-assets/
+          cp collected/sdl-preview-linux-x64/luma-sdl-preview-${tag}-linux-x64.zip release-assets/
+
           cd release-assets
+          sha256sum --check ../collected/cardputer-flash/SHA256SUMS
+          unzip -t "luma-cardputer-${tag}-flash.zip"
+          sha256sum * > SHA256SUMS
           sha256sum --check SHA256SUMS
-          unzip -t "luma-cardputer-${GITHUB_REF_NAME}-flash.zip"
+          find . -maxdepth 1 -type f -printf '%f\n' | sort
 
       - name: Create GitHub Release
         env:

@@ -1,7 +1,17 @@
 {
   "name": "luma-sdl-preview",
   "version-string": "0.1.0",
+  "builtin-baseline": "bd93b56711a393a3c498991e023f94b7542832bb",
   "dependencies": [
-    "sdl2"
+    {
+      "name": "sdl2",
+      "default-features": false,
+      "features": [
+        {
+          "name": "x11",
+          "platform": "linux"
+        }
+      ]
+    }
   ]
 }

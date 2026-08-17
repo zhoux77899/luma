@@ -1,0 +1,146 @@
+name: SDL preview
+
+on:
+  workflow_call:
+    inputs:
+      luma-version:
+        required: true
+        type: string
+      file-slug:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  VCPKG_COMMIT: "bd93b56711a393a3c498991e023f94b7542832bb"
+  VCPKG_DISABLE_METRICS: "1"
+
+jobs:
+  build:
+    name: SDL preview ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            triplet: x64-windows
+            name: windows-x64
+          - os: macos-15
+            triplet: arm64-osx
+            name: macos-arm64
+          - os: macos-15-intel
+            triplet: x64-osx
+            name: macos-x64
+          - os: ubuntu-24.04
+            triplet: x64-linux
+            name: linux-x64
+    env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Check out vcpkg
+        uses: actions/checkout@v6
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ env.VCPKG_COMMIT }}
+          path: vcpkg
+          fetch-depth: 1
+
+      - name: Set VCPKG_ROOT and binary cache
+        shell: bash
+        run: |
+          workspace="${GITHUB_WORKSPACE//\\//}"
+          mkdir -p "${workspace}/.vcpkg-cache"
+          echo "VCPKG_ROOT=${workspace}/vcpkg" >> "${GITHUB_ENV}"
+          echo "VCPKG_BINARY_SOURCES=clear;files,${workspace}/.vcpkg-cache,readwrite" >> "${GITHUB_ENV}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Linux build packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libx11-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxft-dev \
+            libxi-dev \
+            libxrandr-dev \
+            libxss-dev \
+            pkg-config
+
+      - name: Bootstrap vcpkg
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Bootstrap vcpkg
+        if: runner.os != 'Windows'
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('tools/sdl-preview/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_COMMIT }}-
+            vcpkg-${{ matrix.triplet }}-
+
+      - name: Configure SDL preview
+        shell: bash
+        env:
+          LUMA_VERSION: ${{ inputs.luma-version }}
+        run: |
+          cmake -S tools/sdl-preview -B build/sdl-preview \
+            -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLUMA_VERSION="${LUMA_VERSION}"
+
+      - name: Build SDL preview
+        run: cmake --build build/sdl-preview --config Release --target luma-sdl-preview
+
+      - name: Package SDL preview
+        shell: bash
+        env:
+          SLUG: ${{ inputs.file-slug }}
+        run: |
+          set -euo pipefail
+          if [[ -f build/sdl-preview/Release/luma-sdl-preview.exe ]]; then
+            exe="build/sdl-preview/Release/luma-sdl-preview.exe"
+          elif [[ -f build/sdl-preview/luma-sdl-preview ]]; then
+            exe="build/sdl-preview/luma-sdl-preview"
+          else
+            echo "SDL preview executable not found" >&2
+            find build/sdl-preview -name 'luma-sdl-preview*' || true
+            exit 1
+          fi
+          python tools/package-sdl-preview.py \
+            --executable "${exe}" \
+            --triplet "${{ matrix.triplet }}" \
+            --installed-root build/sdl-preview/vcpkg_installed \
+            --slug "${SLUG}" \
+            --platform "${{ matrix.name }}" \
+            --output-dir sdl-preview-assets
+
+      - name: Upload SDL preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdl-preview-${{ matrix.name }}
+          path: sdl-preview-assets/*.zip
+          if-no-files-found: error
+          retention-days: 14
