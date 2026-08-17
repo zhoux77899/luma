@@ -97,8 +97,31 @@ If `esptool.py` is not on `PATH`, use `py -3.11 -m esptool` on Windows or
 detection fails, add `--port <PORT>`, such as `COM5`, `/dev/cu.usbmodem*`, or
 `/dev/ttyUSB0`.
 
-The `luma-cardputer-vX.Y.Z-flash.zip` asset contains the split images, `flash.json`,
-`FLASHING.md`, and an internal checksum file for advanced flashing workflows.
+The `luma-cardputer-vX.Y.Z-flash.zip` Flash package contains the split images,
+`flash.json`, `FLASHING.md`, and an internal checksum file for advanced flashing
+workflows.
+
+Each release also publishes Release-configuration SDL preview zips. `SHA256SUMS`
+covers the Merged image, the Flash package, and these preview archives:
+
+- `luma-sdl-preview-vX.Y.Z-windows-x64.zip`
+- `luma-sdl-preview-vX.Y.Z-macos-arm64.zip`
+- `luma-sdl-preview-vX.Y.Z-macos-x64.zip`
+- `luma-sdl-preview-vX.Y.Z-linux-x64.zip`
+
+## CI artifacts
+
+Pull requests and pushes to `main` upload GitHub Actions artifacts (retained 14
+days):
+
+- `cardputer-flash` — Flash package zip, Merged image, and `SHA256SUMS`
+- `sdl-preview-windows-x64`
+- `sdl-preview-macos-arm64`
+- `sdl-preview-macos-x64`
+- `sdl-preview-linux-x64`
+
+CI Cardputer and SDL preview builds stamp About as `{version}+g{shortsha}`, for
+example `0.1+gabcdef1`. Artifact file names use a hyphen in place of `+`.
 
 ## Development
 
@@ -173,10 +196,14 @@ enters Launcher. App transitions emit `[APP]` lines. Typed keys are reported as
 
 ## SDL preview
 
-The SDL preview runs the same Core and Apps on the host. It requires CMake 3.16 or
-newer, a C++17 compiler, vcpkg, and `VCPKG_ROOT`. Install and bootstrap vcpkg using
-its official instructions, set `VCPKG_ROOT` to that checkout, and run the commands
-for your platform from the repository root.
+The SDL preview runs the same Core and Apps on the host. CI and GitHub Releases
+publish Release-configuration binaries for Windows x64, macOS arm64, macOS x64,
+and Linux x64. Local builds below still use Debug.
+
+The local workflow requires CMake 3.16 or newer, a C++17 compiler, vcpkg, and
+`VCPKG_ROOT`. Install and bootstrap vcpkg using its official instructions, set
+`VCPKG_ROOT` to that checkout, and run the commands for your platform from the
+repository root.
 
 ### Windows (PowerShell)
 
