@@ -46,7 +46,6 @@ private:
     int scanRowCount() const;
     const char* networkStateLabel() const;
     const char* networkStateName() const;
-    const char* signalLevelName() const;
 
     AppContext* context_ = nullptr;
     Pane pane_ = Pane::Category;

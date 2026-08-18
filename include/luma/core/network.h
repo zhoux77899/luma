@@ -66,7 +66,6 @@ private:
     void rememberSuccess(const char* ssid, const char* password);
     int findProfile(const char* ssid) const;
     void promote(int index);
-    SignalStrength strengthFromRssi(int8_t rssi) const;
     void startBackgroundRound();
     void tryNextBackgroundProfile();
     bool scanContains(const char* ssid) const;

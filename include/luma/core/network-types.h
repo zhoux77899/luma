@@ -20,6 +20,19 @@ enum class SignalStrength : uint8_t {
     Strong = 4
 };
 
+inline SignalStrength signalStrengthFromRssi(int8_t rssi) {
+    if (rssi >= -60) {
+        return SignalStrength::Strong;
+    }
+    if (rssi >= -70) {
+        return SignalStrength::Mid;
+    }
+    if (rssi >= -80) {
+        return SignalStrength::Weak;
+    }
+    return SignalStrength::Weakest;
+}
+
 struct WifiScanHit {
     char ssid[33] = {};
     bool encrypted = false;

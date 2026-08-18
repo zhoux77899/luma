@@ -1759,7 +1759,10 @@ void test_settings_wifi_password_back_keeps_ssid() {
     input.push(makeAction(InputAction::Back));
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("Cafe"));
-    TEST_ASSERT_TRUE(display.hasText("Key"));
+    TEST_ASSERT_FALSE(display.hasText("Key"));
+    const auto palette = luma::theme::paletteFor(0);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kLockClosed, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc3, palette.primary_text));
     TEST_ASSERT_FALSE(display.hasText("*"));
     input.push(makeAction(InputAction::Confirm));
     luma.update();
@@ -1816,6 +1819,91 @@ void test_header_time_and_title_do_not_clip() {
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("--:--"));
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
+}
+
+void test_signal_strength_from_rssi_bins() {
+    TEST_ASSERT_EQUAL(luma::SignalStrength::Strong, luma::signalStrengthFromRssi(-60));
+    TEST_ASSERT_EQUAL(luma::SignalStrength::Mid, luma::signalStrengthFromRssi(-70));
+    TEST_ASSERT_EQUAL(luma::SignalStrength::Weak, luma::signalStrengthFromRssi(-80));
+    TEST_ASSERT_EQUAL(luma::SignalStrength::Weakest, luma::signalStrengthFromRssi(-81));
+}
+
+void test_ellipsize_appends_ascii_dots() {
+    char out[40] = {};
+    luma::ellipsizeToWidth("Short", out, sizeof(out), 100);
+    TEST_ASSERT_EQUAL_STRING("Short", out);
+    luma::ellipsizeToWidth("ABCDEFGHIJKLMNOPQRSTUVWXYZ012345", out, sizeof(out), 40);
+    TEST_ASSERT_EQUAL_STRING("ABCDE...", out);
+}
+
+void test_wifi_list_glyph_weakest_is_all_secondary() {
+    FakeDisplay display;
+    const auto palette = luma::theme::paletteFor(0);
+    luma::drawWifiListGlyph(display, palette, {0, 0}, luma::SignalStrength::Weakest);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListDot, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc2, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc3, palette.secondary_text));
+}
+
+void test_settings_wifi_status_signal_is_dbm_only() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit("Open-Cafe", false, -40);
+    radio.rssi_dbm = -42;
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openWifiScanDetail(luma, input);
+    radio.completeScan();
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    radio.succeed();
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("-42 dBm"));
+    TEST_ASSERT_FALSE(display.hasText("Strong"));
+}
+
+void test_settings_wifi_scan_icons_and_long_ssid() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit("ABCDEFGHIJKLMNOPQRSTUVWXYZ012345", true, -50);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openWifiScanDetail(luma, input);
+    radio.completeScan();
+    luma.update();
+    const auto palette = luma::theme::paletteFor(0);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kLockClosed, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc3, palette.primary_text));
+    TEST_ASSERT_FALSE(display.hasText("Key"));
+    bool found_ellipsis = false;
+    for (const auto& text : display.texts) {
+        if (text.size() >= 3 && text.compare(text.size() - 3, 3, "...") == 0) {
+            found_ellipsis = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(found_ellipsis);
 }
 
 void setUp() {}
@@ -1889,5 +1977,10 @@ int main() {
     RUN_TEST(test_settings_wifi_saved_reconnect_skips_password);
     RUN_TEST(test_header_network_glyphs_use_icons_not_spectrum_colors);
     RUN_TEST(test_header_time_and_title_do_not_clip);
+    RUN_TEST(test_signal_strength_from_rssi_bins);
+    RUN_TEST(test_ellipsize_appends_ascii_dots);
+    RUN_TEST(test_wifi_list_glyph_weakest_is_all_secondary);
+    RUN_TEST(test_settings_wifi_status_signal_is_dbm_only);
+    RUN_TEST(test_settings_wifi_scan_icons_and_long_ssid);
     return UNITY_END();
 }

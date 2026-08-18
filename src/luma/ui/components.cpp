@@ -5,6 +5,7 @@
 #include "luma/ui/layout.h"
 
 #include <cstdio>
+#include <cstring>
 
 namespace luma {
 namespace {
@@ -51,6 +52,71 @@ void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Po
     display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc1,
                            arc1);
     display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiDot, on);
+}
+
+void drawWifiListGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                       SignalStrength strength) {
+    const Color on = palette.primary_text;
+    const Color off = palette.secondary_text;
+    const Color origin_color = strength == SignalStrength::None || strength == SignalStrength::Weakest
+                                   ? off
+                                   : on;
+    const Color mid = (strength == SignalStrength::Strong || strength == SignalStrength::Mid) ? on
+                                                                                              : off;
+    const Color outer = strength == SignalStrength::Strong ? on : off;
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListArc3, outer);
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListArc2, mid);
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListDot, origin_color);
+}
+
+void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                   bool locked) {
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           locked ? assets::kLockClosed : assets::kLockOpen, palette.primary_text);
+}
+
+void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width) {
+    if (dst == nullptr || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    if (src == nullptr || max_width <= 0) {
+        return;
+    }
+    if (font::textWidth(src, 1) <= max_width) {
+        std::snprintf(dst, dst_size, "%s", src);
+        return;
+    }
+    const int dots_w = font::textWidth("...", 1);
+    const int budget = max_width - dots_w;
+    if (budget <= 0) {
+        std::snprintf(dst, dst_size, "...");
+        return;
+    }
+    const char* cursor = src;
+    const char* keep = src;
+    uint32_t code = 0;
+    int width = 0;
+    while (font::nextCodepoint(cursor, code)) {
+        const int glyph_w = font::glyphFor(code, false).width;
+        if (width + glyph_w > budget) {
+            break;
+        }
+        width += glyph_w;
+        keep = cursor;
+    }
+    size_t n = static_cast<size_t>(keep - src);
+    if (n + 4 > dst_size) {
+        n = dst_size > 4 ? dst_size - 4 : 0;
+    }
+    if (n > 0) {
+        std::memcpy(dst, src, n);
+    }
+    dst[n] = '\0';
+    std::snprintf(dst + n, dst_size - n, "...");
 }
 
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,

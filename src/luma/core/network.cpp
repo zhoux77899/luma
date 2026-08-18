@@ -340,19 +340,6 @@ bool Network::profileHasPassword(int index) const {
     return blob_.profiles[index].password[0] != '\0';
 }
 
-SignalStrength Network::strengthFromRssi(int8_t rssi) const {
-    if (rssi >= -60) {
-        return SignalStrength::Strong;
-    }
-    if (rssi >= -70) {
-        return SignalStrength::Mid;
-    }
-    if (rssi >= -80) {
-        return SignalStrength::Weak;
-    }
-    return SignalStrength::Weakest;
-}
-
 int8_t Network::rssi() const {
     if (state_ != NetworkState::Connected || radio_ == nullptr) {
         return -127;
@@ -375,7 +362,7 @@ SignalStrength Network::signalStrength() const {
     if (state_ != NetworkState::Connected || radio_ == nullptr) {
         return SignalStrength::None;
     }
-    return strengthFromRssi(radio_->rssi());
+    return signalStrengthFromRssi(radio_->rssi());
 }
 
 void Network::update() {

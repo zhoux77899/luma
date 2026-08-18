@@ -5,6 +5,7 @@
 #include "luma/core/network-types.h"
 #include "luma/ui/theme.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace luma {
@@ -13,6 +14,11 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size);
 
 void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
                       NetworkState state, SignalStrength strength);
+void drawWifiListGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                       SignalStrength strength);
+void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                   bool locked);
+void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width);
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
                    const char* title, const char* time, NetworkState state = NetworkState::Disconnected,
                    SignalStrength strength = SignalStrength::None);

@@ -1,5 +1,6 @@
 #include "luma/apps/settings-app.h"
 
+#include "luma/assets/wifi-icons.h"
 #include "luma/core/app-context.h"
 #include "luma/core/clock.h"
 #include "luma/core/display.h"
@@ -146,6 +147,50 @@ void drawEditorRow(DisplaySurface& display, const theme::Palette& palette, Rect 
     }
 }
 
+constexpr int kRowTextPad = 4;
+constexpr int kListIconGap = 2;
+
+bool savedSignalStrength(const Network& network, int index, SignalStrength& out) {
+    const char* ssid = network.profileSsid(index);
+    if (ssid == nullptr || ssid[0] == '\0') {
+        return false;
+    }
+    if (network.state() == NetworkState::Connected &&
+        std::strcmp(ssid, network.connectedSsid()) == 0) {
+        out = network.signalStrength();
+        return out != SignalStrength::None;
+    }
+    const int hits = network.publicScanCount();
+    for (int i = 0; i < hits; ++i) {
+        WifiScanHit hit;
+        if (network.publicScanAt(i, hit) && std::strcmp(hit.ssid, ssid) == 0) {
+            out = signalStrengthFromRssi(hit.rssi);
+            return true;
+        }
+    }
+    return false;
+}
+
+void drawSsidIconRow(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                     const char* ssid, bool locked, bool show_wifi, SignalStrength strength,
+                     bool selected) {
+    drawDetailCard(display, palette, bounds, selected);
+    const int icon_y = bounds.y + (bounds.h - assets::kWifiListIconSize) / 2;
+    const int wifi_x = bounds.x + bounds.w - kRowTextPad - assets::kWifiListIconSize;
+    const int lock_x =
+        show_wifi ? wifi_x - kListIconGap - assets::kWifiListIconSize : wifi_x;
+    const int ssid_x = bounds.x + kRowTextPad;
+    const int ssid_max = lock_x - kListIconGap - ssid_x;
+    char label[40] = {};
+    ellipsizeToWidth(ssid, label, sizeof(label), ssid_max);
+    display.drawText({ssid_x, centeredTextY(bounds.y, bounds.h)},
+                     {selected ? palette.primary_text : palette.secondary_text, 1}, label);
+    drawLockGlyph(display, palette, {lock_x, icon_y}, locked);
+    if (show_wifi) {
+        drawWifiListGlyph(display, palette, {wifi_x, icon_y}, strength);
+    }
+}
+
 }  // namespace
 
 const char* SettingsApp::id() const { return "settings"; }
@@ -234,25 +279,6 @@ const char* SettingsApp::networkStateName() const {
         case NetworkState::Disconnected:
         default:
             return "Disconnected";
-    }
-}
-
-const char* SettingsApp::signalLevelName() const {
-    if (context_ == nullptr) {
-        return "";
-    }
-    switch (context_->network().signalStrength()) {
-        case SignalStrength::Strong:
-            return "Strong";
-        case SignalStrength::Mid:
-            return "Mid";
-        case SignalStrength::Weak:
-            return "Weak";
-        case SignalStrength::Weakest:
-            return "Weakest";
-        case SignalStrength::None:
-        default:
-            return "";
     }
 }
 
@@ -831,8 +857,7 @@ void SettingsApp::drawWifiEditor() {
         char signal[24] = {};
         char ip[16] = {};
         if (network.state() == NetworkState::Connected) {
-            std::snprintf(signal, sizeof(signal), "%s  %d dBm", signalLevelName(),
-                          static_cast<int>(network.rssi()));
+            std::snprintf(signal, sizeof(signal), "%d dBm", static_cast<int>(network.rssi()));
             network.stationIp(ip, sizeof(ip));
         }
         for (int i = 0; i < count; ++i) {
@@ -870,8 +895,11 @@ void SettingsApp::drawWifiEditor() {
         } else {
             for (int i = 0; i < profiles; ++i) {
                 const Rect row{detail_x, row_y, detail_w, kRowBoxHeight};
-                drawEditorRow(renderer.surface(), palette, row, network.profileSsid(i), "Saved",
-                              right_focused && i == editor_index_);
+                SignalStrength strength = SignalStrength::None;
+                const bool show_wifi = savedSignalStrength(network, i, strength);
+                drawSsidIconRow(renderer.surface(), palette, row, network.profileSsid(i),
+                                network.profileHasPassword(i), show_wifi, strength,
+                                right_focused && i == editor_index_);
                 row_y += kRowBoxHeight + kInnerCardGap;
             }
         }
@@ -896,20 +924,19 @@ void SettingsApp::drawWifiEditor() {
         count > kListVisible ? detail_w - kScrollbarWidth - 2 : detail_w;
     for (int i = 0; i < kListVisible && start + i < count; ++i) {
         const int index = start + i;
-        const char* label = scanning ? "Scanning" : "No networks";
-        const char* value = "";
-        char scan_label[36] = {};
+        const Rect row{detail_x, row_y, row_w, kRowBoxHeight};
         if (!scanning && hits > 0) {
             WifiScanHit hit;
             if (network.publicScanAt(index, hit)) {
-                std::snprintf(scan_label, sizeof(scan_label), "%s", hit.ssid);
-                label = scan_label;
-                value = hit.encrypted ? "Key" : "Open";
+                drawSsidIconRow(renderer.surface(), palette, row, hit.ssid, hit.encrypted, true,
+                                signalStrengthFromRssi(hit.rssi),
+                                right_focused && index == editor_index_);
+                row_y += kRowBoxHeight + kInnerCardGap;
+                continue;
             }
         }
-        const Rect row{detail_x, row_y, row_w, kRowBoxHeight};
-        drawEditorRow(renderer.surface(), palette, row, label, value,
-                      right_focused && index == editor_index_ && !scanning && hits > 0);
+        drawEditorRow(renderer.surface(), palette, row, scanning ? "Scanning" : "No networks",
+                      nullptr, false);
         row_y += kRowBoxHeight + kInnerCardGap;
     }
     const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};

@@ -70,8 +70,8 @@ The compact right-side Header region that shows the network glyph and civil time
 _Avoid_: status bar, system tray, RSSI readout
 
 **Signal strength**:
-The Header's four-level quantization of a connected radio, drawn as three Wi-Fi arcs plus a center dot. Weakest lights only the dot. Numeric RSSI does not appear in the Header. The Wi-Fi Status section may show dBm next to the level name.
-_Avoid_: Header RSSI, color-coded status dot
+The four-level quantization of a radio. The Header status cluster draws three arcs plus a corner dot for the connected station; Weakest lights only the dot. Saved and Scan rows use a 10x10 glyph with a 2x2 origin and two arcs when RSSI is known; Weakest paints every layer as secondary text. Numeric dBm does not appear in the Header or in those rows. The Wi-Fi Status Signal row shows dBm without a level name.
+_Avoid_: Header RSSI, color-coded status dot, Strong/Mid/Weak as Status copy
 
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.
