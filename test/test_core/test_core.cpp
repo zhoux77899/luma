@@ -554,6 +554,25 @@ void test_ui_font_lowercase_is_not_shifted_by_backslash_comment() {
     TEST_ASSERT_EQUAL_HEX16(0x8000, luma::font::glyphRows('b', false)[2]);
 }
 
+void test_ui_font_zh_hans_ssid_is_not_question_marks() {
+    const luma::font::Glyph house = luma::font::glyphFor(0x5BB6, false);
+    TEST_ASSERT_EQUAL(luma::font::kCjkGlyphWidth, house.width);
+    TEST_ASSERT_EQUAL_HEX16(0xFF80, house.rows[2]);
+    TEST_ASSERT_TRUE(house.rows != luma::font::glyphRows('?', false));
+    TEST_ASSERT_EQUAL(10, luma::font::textWidth(u8"家", 1));
+    TEST_ASSERT_EQUAL(15, luma::font::textWidth(u8"A家", 1));
+    TEST_ASSERT_EQUAL(40, luma::font::textWidth(u8"家里的网", 1));
+    TEST_ASSERT_EQUAL(5, luma::font::textWidth(u8"\U0001F600", 1));
+
+    int house_pixels = 0;
+    int question_pixels = 0;
+    luma::font::drawText({0, 0}, {{255, 255, 255}, 1}, u8"家",
+                         [&](int, int, luma::Color) { ++house_pixels; });
+    luma::font::drawText({0, 0}, {{255, 255, 255}, 1}, "?",
+                         [&](int, int, luma::Color) { ++question_pixels; });
+    TEST_ASSERT_TRUE(house_pixels > question_pixels);
+}
+
 void test_settings_loads_valid_keys_independently() {
     luma::InMemoryStorage storage;
     FakeDiagnostics diagnostics;
@@ -1466,12 +1485,40 @@ void test_settings_wifi_scan_and_open_network() {
     radio.completeScan();
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("Open-Cafe"));
+    TEST_ASSERT_FALSE(display.hasText("????????"));
     input.push(makeAction(InputAction::Down));
     luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     TEST_ASSERT_EQUAL_STRING("Open-Cafe", radio.ssid);
     TEST_ASSERT_EQUAL_STRING("", radio.last_password);
+}
+
+void test_settings_wifi_lists_zh_hans_ssid() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit(u8"家里的网", false, -70);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openNetworkWifiEditor(luma, input);
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    radio.completeScan();
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText(u8"家里的网"));
+    TEST_ASSERT_FALSE(display.hasText("????????"));
 }
 
 void test_settings_masked_password_and_timezone_directory() {
@@ -1590,6 +1637,7 @@ int main() {
     RUN_TEST(test_file_storage_persists_across_instances);
     RUN_TEST(test_file_storage_keeps_previous_file_when_replace_fails);
     RUN_TEST(test_ui_font_lowercase_is_not_shifted_by_backslash_comment);
+    RUN_TEST(test_ui_font_zh_hans_ssid_is_not_question_marks);
     RUN_TEST(test_settings_loads_valid_keys_independently);
     RUN_TEST(test_settings_invalid_key_falls_back_without_wiping_others);
     RUN_TEST(test_settings_ignores_legacy_sound_key);
@@ -1625,6 +1673,7 @@ int main() {
     RUN_TEST(test_luma_syncs_clock_on_connected_edge);
     RUN_TEST(test_luma_ntp_failure_keeps_clock_unset);
     RUN_TEST(test_settings_wifi_scan_and_open_network);
+    RUN_TEST(test_settings_wifi_lists_zh_hans_ssid);
     RUN_TEST(test_settings_masked_password_and_timezone_directory);
     RUN_TEST(test_header_network_glyphs_use_icons_not_spectrum_colors);
     RUN_TEST(test_header_time_and_title_do_not_clip);

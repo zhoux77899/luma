@@ -53,6 +53,10 @@ _Avoid_: Wi-Fi manager, connectivity stack, radio
 A remembered SSID and credential pair. At most five are kept, and a profile is persisted only after a successful connection.
 _Avoid_: known network, saved network, wifi config
 
+**Luma UI font**:
+The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Chinese uses the wider CJK cell. A missing character becomes one question mark.
+_Avoid_: M5GFX Font0, system font, per-host typeface
+
 **Header status cluster**:
 The compact right-side Header region that shows the network glyph and civil time.
 _Avoid_: status bar, system tray, RSSI readout
