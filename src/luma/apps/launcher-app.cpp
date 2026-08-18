@@ -4,6 +4,7 @@
 #include "luma/core/app-context.h"
 #include "luma/core/app-manager.h"
 #include "luma/core/display.h"
+#include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/ui/components.h"
 #include "luma/ui/renderer.h"
@@ -114,7 +115,8 @@ void LauncherApp::draw() {
     UiRenderer renderer(context_->display(), palette);
     renderer.beginFrame();
     renderer.clearAppCanvas();
-    drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label);
+    drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label,
+                  context_->network().state(), context_->network().signalStrength());
     for (int i = 0; i < count; ++i) {
         drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], accents[i],
                     i == selected_);

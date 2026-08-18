@@ -1,20 +1,24 @@
 #include "luma/core/app-context.h"
 
+#include "luma/core/network.h"
+
 namespace luma {
 
 AppContext::AppContext(DisplaySurface& display, Settings& settings, Storage& storage, Clock& clock,
-                       Diagnostics& diagnostics)
+                       Diagnostics& diagnostics, Network& network)
     : display_(display),
       settings_(settings),
       storage_(storage),
       clock_(clock),
-      diagnostics_(diagnostics) {}
+      diagnostics_(diagnostics),
+      network_(network) {}
 
 DisplaySurface& AppContext::display() { return display_; }
 Settings& AppContext::settings() { return settings_; }
 Storage& AppContext::storage() { return storage_; }
 Clock& AppContext::clock() { return clock_; }
 Diagnostics& AppContext::diagnostics() { return diagnostics_; }
+Network& AppContext::network() { return network_; }
 
 void AppContext::requestRedraw() { redraw_requested_ = true; }
 

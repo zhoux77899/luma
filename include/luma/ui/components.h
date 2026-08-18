@@ -2,6 +2,7 @@
 
 #include "luma/core/clock.h"
 #include "luma/core/display.h"
+#include "luma/core/network-types.h"
 #include "luma/ui/theme.h"
 
 #include <cstdint>
@@ -10,8 +11,11 @@ namespace luma {
 
 void formatCivilTime(const CivilTime& time, char* out, unsigned out_size);
 
+void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      NetworkState state, SignalStrength strength);
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
-                   const char* title, const char* time);
+                   const char* title, const char* time, NetworkState state = NetworkState::Disconnected,
+                   SignalStrength strength = SignalStrength::None);
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
                   const char* label, bool selected, const char* value = nullptr,
                   bool focused = true);

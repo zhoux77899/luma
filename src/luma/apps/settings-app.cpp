@@ -1,8 +1,11 @@
 #include "luma/apps/settings-app.h"
 
 #include "luma/core/app-context.h"
+#include "luma/core/clock.h"
 #include "luma/core/display.h"
+#include "luma/core/network.h"
 #include "luma/core/settings.h"
+#include "luma/core/time-zone.h"
 #include "luma/ui/app-chrome.h"
 #include "luma/ui/components.h"
 #include "luma/ui/font.h"
@@ -12,6 +15,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 namespace luma {
 namespace {
@@ -70,6 +74,19 @@ void drawBarRow(DisplaySurface& display, const theme::Palette& palette, Rect bou
     }
 }
 
+void drawEditorRow(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                   const char* label, const char* value, bool selected) {
+    drawDetailCard(display, palette, bounds, selected);
+    display.drawText({bounds.x + 4, centeredTextY(bounds.y, bounds.h)},
+                     {selected ? palette.primary_text : palette.secondary_text, 1},
+                     label != nullptr ? label : "");
+    if (value != nullptr && value[0] != '\0') {
+        const int value_x = bounds.x + bounds.w - 4 - font::textWidth(value, 1);
+        display.drawText({value_x, centeredTextY(bounds.y, bounds.h)}, {palette.primary_text, 1},
+                         value);
+    }
+}
+
 }  // namespace
 
 const char* SettingsApp::id() const { return "settings"; }
@@ -79,8 +96,13 @@ Color SettingsApp::accent() const { return theme::kTsuyukusa; }
 void SettingsApp::onEnter(AppContext& context) {
     context_ = &context;
     pane_ = Pane::Category;
+    editor_ = Editor::None;
     category_ = kDisplay;
     detail_ = 0;
+    editor_index_ = 0;
+    password_len_ = 0;
+    password_[0] = '\0';
+    pending_ssid_[0] = '\0';
 }
 
 void SettingsApp::onExit() {
@@ -112,6 +134,29 @@ bool SettingsApp::isVolume() const { return category_ == kSound && detail_ == 0;
 bool SettingsApp::isTheme() const { return category_ == kDisplay && detail_ == 1; }
 
 bool SettingsApp::isAbout() const { return category_ == kSystem && detail_ == 0; }
+
+bool SettingsApp::isWifi() const { return category_ == kNetwork && detail_ == 0; }
+
+bool SettingsApp::isTimeZone() const { return category_ == kNetwork && detail_ == 1; }
+
+const char* SettingsApp::networkStateLabel() const {
+    if (context_ == nullptr) {
+        return "Unknown";
+    }
+    switch (context_->network().state()) {
+        case NetworkState::Connecting:
+            return "Connecting";
+        case NetworkState::Connected:
+            return context_->network().connectedSsid();
+        case NetworkState::Failed:
+            return "Failed";
+        case NetworkState::Unknown:
+            return "Unknown";
+        case NetworkState::Disconnected:
+        default:
+            return "Disconnected";
+    }
+}
 
 void SettingsApp::changeSelected(int delta) {
     if (context_ == nullptr || pane_ != Pane::Detail) {
@@ -165,11 +210,143 @@ bool SettingsApp::handleValueKey(const InputFrame& input) {
     return false;
 }
 
-void SettingsApp::update(const InputFrame& input) {
+int SettingsApp::wifiRowCount() const {
     if (context_ == nullptr) {
+        return 2;
+    }
+    return 2 + context_->network().profileCount() + context_->network().publicScanCount();
+}
+
+SettingsApp::WifiRowKind SettingsApp::wifiRowKind(int index, int& payload) const {
+    payload = 0;
+    if (index <= 0) {
+        return WifiRowKind::Status;
+    }
+    const int profiles = context_ != nullptr ? context_->network().profileCount() : 0;
+    if (index <= profiles) {
+        payload = index - 1;
+        return WifiRowKind::Profile;
+    }
+    if (index == profiles + 1) {
+        return WifiRowKind::ScanAction;
+    }
+    payload = index - profiles - 2;
+    return WifiRowKind::ScanHit;
+}
+
+void SettingsApp::updateWifiEditor(const InputFrame& input) {
+    if (input.action == InputAction::Back) {
+        editor_ = Editor::None;
+        context_->consumeBack();
+        context_->requestRedraw();
         return;
     }
 
+    Network& network = context_->network();
+    const int count = wifiRowCount();
+    if (input.action == InputAction::Up && editor_index_ > 0) {
+        --editor_index_;
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Down && editor_index_ + 1 < count) {
+        ++editor_index_;
+        context_->requestRedraw();
+        return;
+    }
+
+    int payload = 0;
+    const WifiRowKind kind = wifiRowKind(editor_index_, payload);
+    if (input.action == InputAction::Delete && kind == WifiRowKind::Profile) {
+        network.deleteProfile(payload);
+        if (editor_index_ >= wifiRowCount()) {
+            editor_index_ = wifiRowCount() - 1;
+        }
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action != InputAction::Confirm) {
+        return;
+    }
+    if (kind == WifiRowKind::ScanAction) {
+        network.startScan();
+        context_->requestRedraw();
+        return;
+    }
+    if (kind == WifiRowKind::Profile) {
+        network.connectProfile(payload);
+        context_->requestRedraw();
+        return;
+    }
+    if (kind == WifiRowKind::ScanHit) {
+        WifiScanHit hit;
+        if (!network.publicScanAt(payload, hit)) {
+            return;
+        }
+        std::snprintf(pending_ssid_, sizeof(pending_ssid_), "%s", hit.ssid);
+        if (!hit.encrypted) {
+            network.connect(hit.ssid, "");
+            context_->requestRedraw();
+            return;
+        }
+        password_len_ = 0;
+        password_[0] = '\0';
+        editor_ = Editor::Password;
+        context_->requestRedraw();
+    }
+}
+
+void SettingsApp::updatePasswordEditor(const InputFrame& input) {
+    if (input.action == InputAction::Back) {
+        editor_ = Editor::Wifi;
+        context_->consumeBack();
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Delete && password_len_ > 0) {
+        --password_len_;
+        password_[password_len_] = '\0';
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Confirm) {
+        context_->network().connect(pending_ssid_, password_);
+        editor_ = Editor::Wifi;
+        context_->requestRedraw();
+        return;
+    }
+    for (uint8_t i = 0; i < input.textLength && password_len_ + 1 < sizeof(password_); ++i) {
+        password_[password_len_++] = input.text[i];
+        password_[password_len_] = '\0';
+        context_->requestRedraw();
+    }
+}
+
+void SettingsApp::updateTimeZoneEditor(const InputFrame& input) {
+    if (input.action == InputAction::Back) {
+        editor_ = Editor::None;
+        context_->consumeBack();
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Up && tz_index_ > 0) {
+        --tz_index_;
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Down && tz_index_ + 1 < timeZoneCount()) {
+        ++tz_index_;
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Confirm) {
+        context_->clock().setTimeZone(timeZoneIdAt(tz_index_));
+        editor_ = Editor::None;
+        context_->requestRedraw();
+    }
+}
+
+void SettingsApp::updateSplitPane(const InputFrame& input) {
     if (input.action == InputAction::Back) {
         if (pane_ == Pane::Detail) {
             pane_ = Pane::Category;
@@ -227,12 +404,51 @@ void SettingsApp::update(const InputFrame& input) {
         }
         if (isTheme()) {
             changeSelected(1);
+            return;
+        }
+        if (isWifi()) {
+            editor_ = Editor::Wifi;
+            editor_index_ = 0;
+            context_->requestRedraw();
+            return;
+        }
+        if (isTimeZone()) {
+            editor_ = Editor::TimeZone;
+            tz_index_ = 0;
+            const char* current = context_->clock().timeZoneId();
+            for (int i = 0; i < timeZoneCount(); ++i) {
+                if (std::strcmp(timeZoneIdAt(i), current) == 0) {
+                    tz_index_ = i;
+                    break;
+                }
+            }
+            context_->requestRedraw();
         }
     }
 }
 
+void SettingsApp::update(const InputFrame& input) {
+    if (context_ == nullptr) {
+        return;
+    }
+    if (editor_ == Editor::Wifi) {
+        updateWifiEditor(input);
+        return;
+    }
+    if (editor_ == Editor::Password) {
+        updatePasswordEditor(input);
+        return;
+    }
+    if (editor_ == Editor::TimeZone) {
+        updateTimeZoneEditor(input);
+        return;
+    }
+    updateSplitPane(input);
+}
+
 void SettingsApp::detailLabelValue(int index, const char*& label, const char*& value,
-                                  char* brightness, char* volume, const char* theme_label) const {
+                                  char* brightness, char* volume, const char* theme_label,
+                                  char* wifi, char* zone) const {
     label = "";
     value = "";
     if (category_ == kDisplay) {
@@ -253,10 +469,11 @@ void SettingsApp::detailLabelValue(int index, const char*& label, const char*& v
     if (category_ == kNetwork) {
         if (index == 0) {
             label = "Wi-Fi";
+            value = wifi;
         } else {
             label = "Time zone";
+            value = zone;
         }
-        value = "--";
         return;
     }
     if (category_ == kPower) {
@@ -266,11 +483,7 @@ void SettingsApp::detailLabelValue(int index, const char*& label, const char*& v
     label = "About";
 }
 
-void SettingsApp::draw() {
-    if (context_ == nullptr) {
-        return;
-    }
-
+void SettingsApp::drawSplitPane() {
     Settings& settings = context_->settings();
     const theme::Palette palette = theme::paletteFor(settings.theme(), accent());
     UiRenderer renderer(context_->display(), palette);
@@ -322,11 +535,15 @@ void SettingsApp::draw() {
     char volume[8] = {};
     std::snprintf(volume, sizeof(volume), "%u%%", static_cast<unsigned>(settings.volume()));
     const char* theme_label = settings.theme() == 0 ? "Dark" : "Light";
+    char wifi[24] = {};
+    std::snprintf(wifi, sizeof(wifi), "%s", networkStateLabel());
+    char zone[24] = {};
+    std::snprintf(zone, sizeof(zone), "%s", context_->clock().timeZoneId());
     const int count = detailCount();
     for (int i = 0; i < count; ++i) {
         const char* label = "";
         const char* value = "";
-        detailLabelValue(i, label, value, brightness, volume, theme_label);
+        detailLabelValue(i, label, value, brightness, volume, theme_label, wifi, zone);
         const bool bar = (category_ == kDisplay && i == 0) || category_ == kSound;
         const int row_h = bar ? kBarCardHeight : kRowBoxHeight;
         const Rect row{detail_x, row_y, detail_w, row_h};
@@ -351,6 +568,124 @@ void SettingsApp::draw() {
     const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
     drawStandardFooter(renderer, hints, 2);
     renderer.endFrame();
+}
+
+void SettingsApp::drawWifiEditor() {
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
+    UiRenderer renderer(context_->display(), palette);
+    renderer.beginFrame();
+    renderer.clearAppCanvas();
+    drawStandardHeader(*context_, renderer, name());
+
+    Network& network = context_->network();
+    const int count = wifiRowCount();
+    int row_y = layout::kContentBoth.y + 2;
+    const int row_w = layout::kWidth - 2 * layout::kChromeInset;
+    for (int i = 0; i < count; ++i) {
+        int payload = 0;
+        const WifiRowKind kind = wifiRowKind(i, payload);
+        const char* label = "";
+        const char* value = "";
+        char scan_label[36] = {};
+        if (kind == WifiRowKind::Status) {
+            label = "Status";
+            value = networkStateLabel();
+        } else if (kind == WifiRowKind::Profile) {
+            label = network.profileSsid(payload);
+            value = "Saved";
+        } else if (kind == WifiRowKind::ScanAction) {
+            label = network.scanInProgress() ? "Scanning" : "Scan";
+        } else {
+            WifiScanHit hit;
+            if (network.publicScanAt(payload, hit)) {
+                std::snprintf(scan_label, sizeof(scan_label), "%s", hit.ssid);
+                label = scan_label;
+                value = hit.encrypted ? "Key" : "Open";
+            }
+        }
+        const Rect row{layout::kChromeInset, row_y, row_w, kRowBoxHeight};
+        drawEditorRow(renderer.surface(), palette, row, label, value, i == editor_index_);
+        row_y += kRowBoxHeight + kInnerCardGap;
+        if (row_y > layout::kFooter.y - kRowBoxHeight) {
+            break;
+        }
+    }
+
+    const KeyHint hints[] = {{"Ent", "ok"}, {"Del", "forget"}, {"Esc", "back"}};
+    drawStandardFooter(renderer, hints, 3);
+    renderer.endFrame();
+}
+
+void SettingsApp::drawPasswordEditor() {
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
+    UiRenderer renderer(context_->display(), palette);
+    renderer.beginFrame();
+    renderer.clearAppCanvas();
+    drawStandardHeader(*context_, renderer, name());
+
+    renderer.surface().drawText({layout::kChromeInset, layout::kContentBoth.y + 8},
+                                {palette.secondary_text, 1}, pending_ssid_);
+    char masked[64] = {};
+    for (uint8_t i = 0; i < password_len_ && i + 1 < sizeof(masked); ++i) {
+        masked[i] = '*';
+    }
+    renderer.surface().drawText({layout::kChromeInset, layout::kContentBoth.y + 24},
+                                {palette.primary_text, 1}, masked);
+    const KeyHint hints[] = {{"Ent", "join"}, {"Esc", "back"}};
+    drawStandardFooter(renderer, hints, 2);
+    renderer.endFrame();
+}
+
+void SettingsApp::drawTimeZoneEditor() {
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
+    UiRenderer renderer(context_->display(), palette);
+    renderer.beginFrame();
+    renderer.clearAppCanvas();
+    drawStandardHeader(*context_, renderer, name());
+
+    const int visible = 5;
+    int start = tz_index_ - visible / 2;
+    if (start < 0) {
+        start = 0;
+    }
+    if (start + visible > timeZoneCount()) {
+        start = timeZoneCount() - visible;
+    }
+    if (start < 0) {
+        start = 0;
+    }
+    int row_y = layout::kContentBoth.y + 2;
+    const int row_w = layout::kWidth - 2 * layout::kChromeInset;
+    for (int i = 0; i < visible && start + i < timeZoneCount(); ++i) {
+        const int index = start + i;
+        const Rect row{layout::kChromeInset, row_y, row_w, kRowBoxHeight};
+        drawEditorRow(renderer.surface(), palette, row, timeZoneIdAt(index), nullptr,
+                      index == tz_index_);
+        row_y += kRowBoxHeight + kInnerCardGap;
+    }
+
+    const KeyHint hints[] = {{"Ent", "set"}, {"Esc", "back"}};
+    drawStandardFooter(renderer, hints, 2);
+    renderer.endFrame();
+}
+
+void SettingsApp::draw() {
+    if (context_ == nullptr) {
+        return;
+    }
+    if (editor_ == Editor::Wifi) {
+        drawWifiEditor();
+        return;
+    }
+    if (editor_ == Editor::Password) {
+        drawPasswordEditor();
+        return;
+    }
+    if (editor_ == Editor::TimeZone) {
+        drawTimeZoneEditor();
+        return;
+    }
+    drawSplitPane();
 }
 
 }  // namespace luma

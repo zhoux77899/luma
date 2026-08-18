@@ -44,6 +44,20 @@ public:
     virtual void drawRoundRect(Rect rect, int radius, Color color) = 0;
     virtual void drawText(Point origin, TextStyle style, const char* text) = 0;
     virtual void drawBitmap(Point origin, int width, int height, const uint16_t* rgb565) = 0;
+    virtual void drawMonoBitmap(Point origin, int width, int height, const uint16_t* rows,
+                                Color color) {
+        if (rows == nullptr || width <= 0 || height <= 0) {
+            return;
+        }
+        for (int y = 0; y < height; ++y) {
+            const uint16_t bits = rows[y];
+            for (int x = 0; x < width && x < 16; ++x) {
+                if ((bits & static_cast<uint16_t>(0x8000 >> x)) != 0) {
+                    fillRect({origin.x + x, origin.y + y, 1, 1}, color);
+                }
+            }
+        }
+    }
     virtual void setBrightness(uint8_t percent) { (void)percent; }
     virtual void endFrame() = 0;
 };

@@ -1,5 +1,6 @@
 #include "luma/ui/components.h"
 
+#include "luma/assets/wifi-icons.h"
 #include "luma/ui/font.h"
 #include "luma/ui/layout.h"
 
@@ -29,8 +30,46 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
                   static_cast<unsigned>(time.minute));
 }
 
+void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      NetworkState state, SignalStrength strength) {
+    const Color on = palette.primary_text;
+    const Color off = palette.secondary_text;
+    if (state == NetworkState::Disconnected) {
+        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
+                               assets::kWifiDisconnected, on);
+        return;
+    }
+    if (state == NetworkState::Connecting) {
+        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
+                               assets::kWifiConnecting, on);
+        return;
+    }
+    if (state == NetworkState::Failed) {
+        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
+                               assets::kWifiFailed, on);
+        return;
+    }
+    if (state == NetworkState::Unknown) {
+        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
+                               assets::kWifiUnknown, on);
+        return;
+    }
+
+    const Color arc3 = strength == SignalStrength::Strong ? on : off;
+    const Color arc2 = (strength == SignalStrength::Strong || strength == SignalStrength::Mid) ? on
+                                                                                               : off;
+    const Color arc1 = strength == SignalStrength::Weakest ? off : on;
+    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc3,
+                           arc3);
+    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc2,
+                           arc2);
+    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc1,
+                           arc1);
+}
+
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
-                   const char* title, const char* time) {
+                   const char* title, const char* time, NetworkState state,
+                   SignalStrength strength) {
     display.fillRect(layout::kHeader, palette.canvas);
     if (logo != nullptr) {
         display.drawBitmap({layout::kHeaderLogoX, layout::kHeaderLogoY}, layout::kHeaderLogoSize,
@@ -42,6 +81,9 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
                      title != nullptr ? title : "");
     const char* label = time != nullptr ? time : "--:--";
     const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
+    const int icon_x = time_x - layout::kHeaderStatusGap - layout::kHeaderNetworkIconSize;
+    const int icon_y = (layout::kHeaderHeight - layout::kHeaderNetworkIconSize) / 2;
+    drawNetworkGlyph(display, palette, {icon_x, icon_y}, state, strength);
     display.drawText({time_x, headerTextY()}, {palette.primary_text, 1}, label);
 }
 

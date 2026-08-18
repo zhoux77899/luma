@@ -17,6 +17,7 @@ class Clock;
 class Diagnostics;
 class DisplaySurface;
 class InputSource;
+class Network;
 class Settings;
 class Storage;
 
@@ -24,7 +25,7 @@ class Luma {
 public:
     Luma();
     Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
-         Settings& settings, Diagnostics& diagnostics, Audio& audio);
+         Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network);
 
     void begin();
     void update();
@@ -37,8 +38,9 @@ private:
     void drawBootScreen();
     bool inputPresent(const InputFrame& frame) const;
     void finishBoot();
-    void requestHeaderTimeRedraw();
+    void requestHeaderRedraw();
     void playUiSound(const char* event);
+    uint8_t headerNetworkKey() const;
 
     DisplaySurface& display_;
     InputSource& input_;
@@ -47,6 +49,7 @@ private:
     Settings& settings_;
     Diagnostics& diagnostics_;
     Audio& audio_;
+    Network& network_;
     AppContext context_;
     InputManager input_manager_;
     AppManager app_manager_;
@@ -57,6 +60,8 @@ private:
     bool booting_ = false;
     uint32_t boot_started_ms_ = 0;
     uint8_t last_header_minute_ = 254;
+    uint8_t last_header_network_ = 255;
+    uint8_t last_scan_key_ = 255;
 };
 
 }  // namespace luma

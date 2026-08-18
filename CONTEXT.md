@@ -9,11 +9,11 @@ The firmware product that runs on Cardputer ADV, and the coordinator that boots 
 _Avoid_: OS, system, shell
 
 **Core**:
-The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, and Audio contracts.
+The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, Audio, Clock, and Network contracts.
 _Avoid_: shell, OS, runtime
 
 **AppContext**:
-The service bag handed to an App on enter: display, Settings, Storage, Clock, and redraw.
+The service bag handed to an App on enter: display, Settings, Storage, Clock, Network, and redraw.
 
 **AppManager**:
 The owner of the one current App and the static registry that routes enter, exit, Back, and shortcuts.
@@ -38,8 +38,28 @@ The brief Logo splash Luma shows before entering Launcher. It is not an App.
 _Avoid_: splash App, boot App, home splash
 
 **Clock**:
-The service that provides frame time and local civil time. Civil time is invalid until the device clock is set.
-_Avoid_: RTC, wall clock service, timer
+The service that provides frame time and local civil time. Civil time stays invalid until the Clock is synchronized; a temporary disconnect keeps the last valid civil time.
+_Avoid_: RTC, wall clock service, timer, NTP service
+
+**Time zone**:
+The persisted IANA civil-time selection the Clock applies. The Network category is where the user edits it.
+_Avoid_: TZ env, POSIX string, offset setting
+
+**Network**:
+The Core service that owns Wi-Fi station connectivity, profiles, scan, and reconnect. It is not the Settings category of the same name.
+_Avoid_: Wi-Fi manager, connectivity stack, radio
+
+**Wi-Fi profile**:
+A remembered SSID and credential pair. At most five are kept, and a profile is persisted only after a successful connection.
+_Avoid_: known network, saved network, wifi config
+
+**Header status cluster**:
+The compact right-side Header region that shows the network glyph and civil time.
+_Avoid_: status bar, system tray, RSSI readout
+
+**Signal strength**:
+The Header's four-level quantization of a connected radio, drawn as Wi-Fi arcs. Numeric RSSI does not appear in the Header.
+_Avoid_: Header RSSI, dBm, color-coded status dot
 
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.
