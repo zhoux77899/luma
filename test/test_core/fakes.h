@@ -258,6 +258,17 @@ public:
     luma::NetworkState radioState() const override { return state; }
     const char* connectedSsid() const override { return ssid; }
     int8_t rssi() const override { return rssi_dbm; }
+
+    void stationIp(char* out, size_t n) const override {
+        if (out == nullptr || n == 0) {
+            return;
+        }
+        if (state != luma::NetworkState::Connected) {
+            out[0] = '\0';
+            return;
+        }
+        std::snprintf(out, n, "192.168.1.10");
+    }
 };
 
 class FakeInputSource : public InputSource {

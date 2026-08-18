@@ -134,8 +134,36 @@ bool Network::scanContains(const char* ssid) const {
 
 bool Network::isSavedSsid(const char* ssid) const { return findProfile(ssid) >= 0; }
 
+bool Network::isFirstPublicSsid(int radio_index, const char* ssid) const {
+    if (radio_ == nullptr || ssid == nullptr) {
+        return false;
+    }
+    WifiScanHit earlier;
+    for (int i = 0; i < radio_index; ++i) {
+        if (radio_->scanAt(i, earlier) && !isSavedSsid(earlier.ssid) &&
+            std::strcmp(earlier.ssid, ssid) == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void Network::bestPublicHit(const char* ssid, WifiScanHit& out) const {
+    WifiScanHit hit;
+    bool found = false;
+    for (int i = 0; i < radio_->scanCount(); ++i) {
+        if (!radio_->scanAt(i, hit) || isSavedSsid(hit.ssid) || std::strcmp(hit.ssid, ssid) != 0) {
+            continue;
+        }
+        if (!found || hit.rssi > out.rssi) {
+            out = hit;
+            found = true;
+        }
+    }
+}
+
 void Network::startBackgroundRound() {
-    if (radio_ == nullptr || blob_.count == 0) {
+    if (reconnect_held_ || radio_ == nullptr || blob_.count == 0) {
         state_ = NetworkState::Disconnected;
         mode_ = Mode::Idle;
         return;
@@ -186,6 +214,7 @@ void Network::connect(const char* ssid, const char* password) {
     if (radio_ == nullptr || ssid == nullptr || ssid[0] == '\0') {
         return;
     }
+    reconnect_held_ = false;
     copySsid(pending_ssid_, ssid);
     copyPassword(pending_password_, password);
     mode_ = Mode::Manual;
@@ -220,6 +249,18 @@ void Network::deleteProfile(int index) {
     emit("profile deleted");
 }
 
+void Network::disconnect() {
+    reconnect_held_ = true;
+    next_background_ms_ = 0;
+    mode_ = Mode::Idle;
+    state_ = NetworkState::Disconnected;
+    waiting_for_scan_ = false;
+    if (radio_ != nullptr) {
+        radio_->disconnect();
+    }
+    emit("disconnected");
+}
+
 void Network::startScan() {
     if (radio_ == nullptr) {
         return;
@@ -240,7 +281,8 @@ int Network::publicScanCount() const {
     int count = 0;
     WifiScanHit hit;
     for (int i = 0; i < radio_->scanCount(); ++i) {
-        if (radio_->scanAt(i, hit) && !isSavedSsid(hit.ssid)) {
+        if (radio_->scanAt(i, hit) && !isSavedSsid(hit.ssid) && hit.ssid[0] != '\0' &&
+            isFirstPublicSsid(i, hit.ssid)) {
             ++count;
         }
     }
@@ -248,17 +290,18 @@ int Network::publicScanCount() const {
 }
 
 bool Network::publicScanAt(int index, WifiScanHit& out) const {
-    if (radio_ == nullptr || index < 0) {
+    if (radio_ == nullptr || index < 0 || !radio_->scanComplete()) {
         return false;
     }
     int visible = 0;
     WifiScanHit hit;
     for (int i = 0; i < radio_->scanCount(); ++i) {
-        if (!radio_->scanAt(i, hit) || isSavedSsid(hit.ssid)) {
+        if (!radio_->scanAt(i, hit) || isSavedSsid(hit.ssid) || hit.ssid[0] == '\0' ||
+            !isFirstPublicSsid(i, hit.ssid)) {
             continue;
         }
         if (visible == index) {
-            out = hit;
+            bestPublicHit(hit.ssid, out);
             return true;
         }
         ++visible;
@@ -310,6 +353,24 @@ SignalStrength Network::strengthFromRssi(int8_t rssi) const {
     return SignalStrength::Weakest;
 }
 
+int8_t Network::rssi() const {
+    if (state_ != NetworkState::Connected || radio_ == nullptr) {
+        return -127;
+    }
+    return radio_->rssi();
+}
+
+void Network::stationIp(char* out, size_t out_size) const {
+    if (out == nullptr || out_size == 0) {
+        return;
+    }
+    out[0] = '\0';
+    if (state_ != NetworkState::Connected || radio_ == nullptr) {
+        return;
+    }
+    radio_->stationIp(out, out_size);
+}
+
 SignalStrength Network::signalStrength() const {
     if (state_ != NetworkState::Connected || radio_ == nullptr) {
         return SignalStrength::None;
@@ -330,6 +391,11 @@ void Network::update() {
     }
 
     if (state_ == NetworkState::Connected && radio != NetworkState::Connected) {
+        if (reconnect_held_) {
+            state_ = NetworkState::Disconnected;
+            mode_ = Mode::Idle;
+            return;
+        }
         startBackgroundRound();
         return;
     }
@@ -374,9 +440,9 @@ void Network::update() {
         return;
     }
 
-    if (state_ != NetworkState::Connected && state_ != NetworkState::Failed &&
-        blob_.count > 0 && now >= next_background_ms_ && next_background_ms_ != 0 &&
-        mode_ != Mode::Manual) {
+    if (!reconnect_held_ && state_ != NetworkState::Connected &&
+        state_ != NetworkState::Failed && blob_.count > 0 && now >= next_background_ms_ &&
+        next_background_ms_ != 0 && mode_ != Mode::Manual) {
         startBackgroundRound();
     }
 }

@@ -2,6 +2,8 @@
 
 #include "luma/core/network-types.h"
 
+#include <cstddef>
+
 namespace luma {
 
 class WifiRadio {
@@ -19,6 +21,7 @@ public:
     virtual NetworkState radioState() const = 0;
     virtual const char* connectedSsid() const = 0;
     virtual int8_t rssi() const = 0;
+    virtual void stationIp(char* out, size_t n) const = 0;
 };
 
 }  // namespace luma

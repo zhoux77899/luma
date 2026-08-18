@@ -46,12 +46,20 @@ The persisted IANA civil-time selection the Clock applies. The Network category 
 _Avoid_: TZ env, POSIX string, offset setting
 
 **Network**:
-The Core service that owns Wi-Fi station connectivity, profiles, scan, and reconnect. It is not the Settings category of the same name.
+The Core service that owns Wi-Fi station connectivity, profiles, scan, and reconnect. It is not the Settings category of the same name. A user Disconnect holds reconnect until the next connect or reboot.
 _Avoid_: Wi-Fi manager, connectivity stack, radio
 
 **Wi-Fi profile**:
-A remembered SSID and credential pair. At most five are kept, and a profile is persisted only after a successful connection.
+A remembered SSID and credential pair. At most five are kept, and a profile is persisted only after a successful connection. A pending credential is discarded on Failed and does not become a profile.
 _Avoid_: known network, saved network, wifi config
+
+**Wi-Fi section**:
+One of Status, Saved, or Scan in the Wi-Fi nested split of the Settings App.
+_Avoid_: Settings category, tab
+
+**Pending credential**:
+The password typed in the Wi-Fi Scan detail to join an encrypted scan hit. It is not a Wi-Fi profile until the connection succeeds.
+_Avoid_: WPA key, PSK, saved password
 
 **Luma UI font**:
 The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Chinese uses the wider CJK cell. A missing character becomes one question mark.
@@ -62,8 +70,8 @@ The compact right-side Header region that shows the network glyph and civil time
 _Avoid_: status bar, system tray, RSSI readout
 
 **Signal strength**:
-The Header's four-level quantization of a connected radio, drawn as Wi-Fi arcs. Numeric RSSI does not appear in the Header.
-_Avoid_: Header RSSI, dBm, color-coded status dot
+The Header's four-level quantization of a connected radio, drawn as three Wi-Fi arcs plus a center dot. Weakest lights only the dot. Numeric RSSI does not appear in the Header. The Wi-Fi Status section may show dBm next to the level name.
+_Avoid_: Header RSSI, color-coded status dot
 
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.

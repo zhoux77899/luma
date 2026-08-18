@@ -2,6 +2,7 @@
 
 #include "luma/core/network-types.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace luma {
@@ -29,6 +30,8 @@ public:
     NetworkState state() const;
     SignalStrength signalStrength() const;
     const char* connectedSsid() const;
+    int8_t rssi() const;
+    void stationIp(char* out, size_t out_size) const;
     bool takeConnectedEdge();
 
     void startScan();
@@ -38,6 +41,7 @@ public:
 
     void connect(const char* ssid, const char* password);
     void connectProfile(int index);
+    void disconnect();
     void deleteProfile(int index);
     int profileCount() const;
     const char* profileSsid(int index) const;
@@ -67,6 +71,8 @@ private:
     void tryNextBackgroundProfile();
     bool scanContains(const char* ssid) const;
     bool isSavedSsid(const char* ssid) const;
+    bool isFirstPublicSsid(int radio_index, const char* ssid) const;
+    void bestPublicHit(const char* ssid, WifiScanHit& out) const;
     void copySsid(char* dst, const char* src) const;
     void copyPassword(char* dst, const char* src) const;
 
@@ -86,6 +92,7 @@ private:
     int background_attempts_ = 0;
     int background_profile_ = 0;
     bool waiting_for_scan_ = false;
+    bool reconnect_held_ = false;
 };
 
 }  // namespace luma

@@ -1461,6 +1461,16 @@ void openNetworkWifiEditor(Luma& luma, FakeInputSource& input) {
     luma.update();
 }
 
+void openWifiScanDetail(Luma& luma, FakeInputSource& input) {
+    openNetworkWifiEditor(luma, input);
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
 void test_settings_wifi_scan_and_open_network() {
     luma::InMemoryStorage storage;
     FakeDisplay display;
@@ -1477,21 +1487,19 @@ void test_settings_wifi_scan_and_open_network() {
 
     luma.begin();
     enterLauncher(luma, clock);
-    openNetworkWifiEditor(luma, input);
-    input.push(makeAction(InputAction::Down));
-    luma.update();
-    input.push(makeAction(InputAction::Confirm));
-    luma.update();
+    openWifiScanDetail(luma, input);
+    TEST_ASSERT_TRUE(display.hasText("Scanning"));
     radio.completeScan();
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("Open-Cafe"));
     TEST_ASSERT_FALSE(display.hasText("????????"));
-    input.push(makeAction(InputAction::Down));
-    luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     TEST_ASSERT_EQUAL_STRING("Open-Cafe", radio.ssid);
     TEST_ASSERT_EQUAL_STRING("", radio.last_password);
+    TEST_ASSERT_TRUE(display.hasText("Status"));
+    TEST_ASSERT_TRUE(display.hasText("Connecting"));
+    TEST_ASSERT_FALSE(display.hasText("**"));
 }
 
 void test_settings_wifi_lists_zh_hans_ssid() {
@@ -1510,11 +1518,7 @@ void test_settings_wifi_lists_zh_hans_ssid() {
 
     luma.begin();
     enterLauncher(luma, clock);
-    openNetworkWifiEditor(luma, input);
-    input.push(makeAction(InputAction::Down));
-    luma.update();
-    input.push(makeAction(InputAction::Confirm));
-    luma.update();
+    openWifiScanDetail(luma, input);
     radio.completeScan();
     luma.update();
     TEST_ASSERT_TRUE(display.hasText(u8"家里的网"));
@@ -1537,27 +1541,37 @@ void test_settings_masked_password_and_timezone_directory() {
 
     luma.begin();
     enterLauncher(luma, clock);
-    openNetworkWifiEditor(luma, input);
-    input.push(makeAction(InputAction::Down));
-    luma.update();
-    input.push(makeAction(InputAction::Confirm));
-    luma.update();
+    openWifiScanDetail(luma, input);
     radio.completeScan();
     luma.update();
-    input.push(makeAction(InputAction::Down));
-    luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Scan"));
+    TEST_ASSERT_TRUE(display.hasText("SSID"));
+    TEST_ASSERT_TRUE(display.hasText("Cafe"));
+    TEST_ASSERT_TRUE(display.hasText("Password"));
     input.push(makeText('s'));
     luma.update();
     input.push(makeText('e'));
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("**"));
+    TEST_ASSERT_TRUE(display.hasText("2"));
     TEST_ASSERT_FALSE(display.hasText("se"));
+    for (int i = 0; i < 28; ++i) {
+        input.push(makeText('x'));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("30"));
+    TEST_ASSERT_TRUE(display.hasText("************************"));
+    TEST_ASSERT_FALSE(display.hasText("*************************"));
     input.push(makeAction(InputAction::Confirm));
     luma.update();
-    TEST_ASSERT_EQUAL_STRING("se", radio.last_password);
+    TEST_ASSERT_EQUAL_STRING("sexxxxxxxxxxxxxxxxxxxxxxxxxxxx", radio.last_password);
+    TEST_ASSERT_TRUE(display.hasText("Connecting"));
+    TEST_ASSERT_FALSE(display.hasText("**"));
 
+    input.push(makeAction(InputAction::Back));
+    luma.update();
     input.push(makeAction(InputAction::Back));
     luma.update();
     input.push(makeAction(InputAction::Down));
@@ -1566,6 +1580,14 @@ void test_settings_masked_password_and_timezone_directory() {
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("UTC"));
     TEST_ASSERT_TRUE(display.hasText("Asia/Shanghai"));
+    bool has_scrollbar = false;
+    for (const auto& fill : display.fills) {
+        if (fill.rect.w == 2) {
+            has_scrollbar = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(has_scrollbar);
     input.push(makeAction(InputAction::Down));
     luma.update();
     input.push(makeAction(InputAction::Confirm));
@@ -1582,24 +1604,209 @@ void test_header_network_glyphs_use_icons_not_spectrum_colors() {
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Connecting,
                            luma::SignalStrength::None);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiConnecting, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Failed,
                            luma::SignalStrength::None);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiFailed, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Unknown,
                            luma::SignalStrength::None);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiUnknown, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Connected,
                            luma::SignalStrength::Weakest);
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc1, palette.secondary_text));
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc3, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDot, palette.primary_text));
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Connected,
                            luma::SignalStrength::Strong);
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc3, palette.primary_text));
+}
+
+void test_network_scan_dedups_ssid_keeping_strongest_rssi() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    network.load();
+    radio.addHit("Cafe", true, -80);
+    radio.addHit("Cafe", true, -40);
+    radio.addHit("Other", false, -60);
+    network.startScan();
+    radio.completeScan();
+    network.update();
+    TEST_ASSERT_EQUAL_INT(2, network.publicScanCount());
+    luma::WifiScanHit hit;
+    TEST_ASSERT_TRUE(network.publicScanAt(0, hit));
+    TEST_ASSERT_EQUAL_STRING("Cafe", hit.ssid);
+    TEST_ASSERT_EQUAL_INT8(-40, hit.rssi);
+    TEST_ASSERT_TRUE(network.publicScanAt(1, hit));
+    TEST_ASSERT_EQUAL_STRING("Other", hit.ssid);
+}
+
+void test_network_station_ip_and_disconnect_hold() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    network.load();
+    radio.addHit("Home", true, -40);
+    network.connect("Home", "pw");
+    radio.succeed();
+    clock.now = 20;
+    network.update();
+    TEST_ASSERT_EQUAL(luma::NetworkState::Connected, network.state());
+    char ip[16] = {};
+    network.stationIp(ip, sizeof(ip));
+    TEST_ASSERT_EQUAL_STRING("192.168.1.10", ip);
+    TEST_ASSERT_EQUAL_INT8(-55, network.rssi());
+
+    const int connects = radio.connect_calls;
+    network.disconnect();
+    TEST_ASSERT_EQUAL(luma::NetworkState::Disconnected, network.state());
+    network.stationIp(ip, sizeof(ip));
+    TEST_ASSERT_EQUAL_STRING("", ip);
+    clock.now = 20 + luma::Network::kBackgroundIdleMs + 1000;
+    network.update();
+    TEST_ASSERT_EQUAL(luma::NetworkState::Disconnected, network.state());
+    TEST_ASSERT_EQUAL_INT(connects, radio.connect_calls);
+
+    network.connect("Home", "pw");
+    TEST_ASSERT_EQUAL(luma::NetworkState::Connecting, network.state());
+}
+
+void test_settings_wifi_nested_split_and_scan_scroll() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit("Net0", false, -50);
+    radio.addHit("Net1", false, -51);
+    radio.addHit("Net2", false, -52);
+    radio.addHit("Net3", false, -53);
+    radio.addHit("Net4", false, -54);
+    radio.addHit("Net5", false, -55);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openNetworkWifiEditor(luma, input);
+    TEST_ASSERT_TRUE(display.hasText("Status"));
+    TEST_ASSERT_TRUE(display.hasText("Saved"));
+    TEST_ASSERT_TRUE(display.hasText("Scan"));
+    TEST_ASSERT_TRUE(display.hasText("Disconnected"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("State"));
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Scanning"));
+    radio.completeScan();
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Scan"));
+    TEST_ASSERT_TRUE(display.hasText("Net0"));
+    for (int i = 0; i < 5; ++i) {
+        input.push(makeAction(InputAction::Down));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("Net5"));
+    TEST_ASSERT_FALSE(display.hasText("Net0"));
+}
+
+void test_settings_wifi_password_back_keeps_ssid() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit("Cafe", true, -50);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openWifiScanDetail(luma, input);
+    radio.completeScan();
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Password"));
+    input.push(makeText('x'));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("*"));
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Cafe"));
+    TEST_ASSERT_TRUE(display.hasText("Key"));
+    TEST_ASSERT_FALSE(display.hasText("*"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_EQUAL_STRING("", radio.last_password);
+    TEST_ASSERT_EQUAL_STRING("Cafe", radio.ssid);
+}
+
+void test_settings_wifi_saved_reconnect_skips_password() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    radio.addHit("Open-Cafe", false, -70);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    openWifiScanDetail(luma, input);
+    radio.completeScan();
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    radio.succeed();
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Connected"));
+    TEST_ASSERT_TRUE(display.hasText("Open-Cafe"));
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Saved"));
+    TEST_ASSERT_FALSE(display.hasText("**"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_EQUAL_STRING("Open-Cafe", radio.ssid);
+    TEST_ASSERT_TRUE(display.hasText("Connecting"));
+    TEST_ASSERT_FALSE(display.hasText("**"));
 }
 
 void test_header_time_and_title_do_not_clip() {
@@ -1665,6 +1872,8 @@ int main() {
     RUN_TEST(test_clock_unset_renders_invalid_until_ntp);
     RUN_TEST(test_clock_keeps_last_valid_time_after_sync);
     RUN_TEST(test_network_scan_lists_ssids_without_blocking);
+    RUN_TEST(test_network_scan_dedups_ssid_keeping_strongest_rssi);
+    RUN_TEST(test_network_station_ip_and_disconnect_hold);
     RUN_TEST(test_network_persists_profile_only_after_success);
     RUN_TEST(test_network_replaces_last_profile_at_capacity);
     RUN_TEST(test_network_delete_profile);
@@ -1675,6 +1884,9 @@ int main() {
     RUN_TEST(test_settings_wifi_scan_and_open_network);
     RUN_TEST(test_settings_wifi_lists_zh_hans_ssid);
     RUN_TEST(test_settings_masked_password_and_timezone_directory);
+    RUN_TEST(test_settings_wifi_nested_split_and_scan_scroll);
+    RUN_TEST(test_settings_wifi_password_back_keeps_ssid);
+    RUN_TEST(test_settings_wifi_saved_reconnect_skips_password);
     RUN_TEST(test_header_network_glyphs_use_icons_not_spectrum_colors);
     RUN_TEST(test_header_time_and_title_do_not_clip);
     return UNITY_END();

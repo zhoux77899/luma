@@ -2,6 +2,8 @@
 
 #include "luma/core/wifi-radio.h"
 
+#include <cstddef>
+
 namespace luma {
 
 class HostWifiRadio : public WifiRadio {
@@ -17,9 +19,9 @@ public:
     NetworkState radioState() const override;
     const char* connectedSsid() const override;
     int8_t rssi() const override;
+    void stationIp(char* out, size_t n) const override;
 
 private:
-    static constexpr int kCannedCount = 2;
     static constexpr int kConnectTicks = 3;
 
     NetworkState state_ = NetworkState::Disconnected;

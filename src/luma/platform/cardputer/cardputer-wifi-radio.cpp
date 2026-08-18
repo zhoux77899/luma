@@ -91,4 +91,18 @@ int8_t CardputerWifiRadio::rssi() const {
     return static_cast<int8_t>(WiFi.RSSI());
 }
 
+void CardputerWifiRadio::stationIp(char* out, size_t n) const {
+    if (out == nullptr || n == 0) {
+        return;
+    }
+    out[0] = '\0';
+    if (state_ != NetworkState::Connected) {
+        return;
+    }
+    const IPAddress ip = WiFi.localIP();
+    std::snprintf(out, n, "%u.%u.%u.%u", static_cast<unsigned>(ip[0]),
+                  static_cast<unsigned>(ip[1]), static_cast<unsigned>(ip[2]),
+                  static_cast<unsigned>(ip[3]));
+}
+
 }  // namespace luma

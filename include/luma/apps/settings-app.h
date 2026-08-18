@@ -18,8 +18,7 @@ public:
 private:
     enum class Pane : int { Category, Detail };
     enum class Editor : int { None, Wifi, Password, TimeZone };
-
-    enum class WifiRowKind : int { Status, Profile, ScanAction, ScanHit };
+    enum class WifiSection : int { Status, Saved, Scan };
 
     void applyImmediate();
     void changeSelected(int delta);
@@ -39,15 +38,20 @@ private:
     void updateTimeZoneEditor(const InputFrame& input);
     void drawSplitPane();
     void drawWifiEditor();
-    void drawPasswordEditor();
     void drawTimeZoneEditor();
-    int wifiRowCount() const;
-    WifiRowKind wifiRowKind(int index, int& payload) const;
+    void enterWifiStatusDetail();
+    int wifiSectionCount() const;
+    int wifiDetailCount() const;
+    int statusRowCount() const;
+    int scanRowCount() const;
     const char* networkStateLabel() const;
+    const char* networkStateName() const;
+    const char* signalLevelName() const;
 
     AppContext* context_ = nullptr;
     Pane pane_ = Pane::Category;
     Editor editor_ = Editor::None;
+    WifiSection wifi_section_ = WifiSection::Status;
     int category_ = 0;
     int detail_ = 0;
     int editor_index_ = 0;

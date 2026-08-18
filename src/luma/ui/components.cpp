@@ -34,24 +34,9 @@ void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Po
                       NetworkState state, SignalStrength strength) {
     const Color on = palette.primary_text;
     const Color off = palette.secondary_text;
-    if (state == NetworkState::Disconnected) {
+    if (state != NetworkState::Connected) {
         display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
                                assets::kWifiDisconnected, on);
-        return;
-    }
-    if (state == NetworkState::Connecting) {
-        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
-                               assets::kWifiConnecting, on);
-        return;
-    }
-    if (state == NetworkState::Failed) {
-        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
-                               assets::kWifiFailed, on);
-        return;
-    }
-    if (state == NetworkState::Unknown) {
-        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
-                               assets::kWifiUnknown, on);
         return;
     }
 
@@ -65,6 +50,7 @@ void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Po
                            arc2);
     display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc1,
                            arc1);
+    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiDot, on);
 }
 
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
@@ -169,6 +155,27 @@ void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, con
         }
         x += kGroupGap;
     }
+}
+
+void drawOverflowScrollbar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                           int count, int start, int visible) {
+    if (count <= visible || bounds.w <= 0 || bounds.h <= 0) {
+        return;
+    }
+    display.fillRect(bounds, palette.secondary_text);
+    int thumb_h = (visible * bounds.h) / count;
+    if (thumb_h < 4) {
+        thumb_h = 4;
+    }
+    if (thumb_h > bounds.h) {
+        thumb_h = bounds.h;
+    }
+    const int max_start = count - visible;
+    int thumb_y = bounds.y;
+    if (max_start > 0) {
+        thumb_y = bounds.y + (start * (bounds.h - thumb_h)) / max_start;
+    }
+    display.fillRect({bounds.x, thumb_y, bounds.w, thumb_h}, palette.primary_text);
 }
 
 void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,

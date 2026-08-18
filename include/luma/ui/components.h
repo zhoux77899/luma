@@ -33,6 +33,8 @@ struct KeyHint {
 
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
                      int count);
+void drawOverflowScrollbar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                           int count, int start, int visible);
 void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,
                  const char* name, Color color, bool selected);
 

@@ -41,7 +41,66 @@ constexpr int kCardPad = 3;
 
 const char* kCategoryLabels[kCategoryCount] = {"Display", "Sound", "Network", "Power", "System"};
 
+constexpr int kWifiSectionCount = 3;
+const char* kWifiSectionLabels[kWifiSectionCount] = {"Status", "Saved", "Scan"};
+constexpr int kListVisible = 5;
+constexpr int kScrollbarWidth = 2;
+
 int centeredTextY(int box_y, int box_h) { return box_y + (box_h - font::kGlyphHeight) / 2; }
+
+void copyPrefixFitting(const char* src, char* dst, size_t dst_size, int max_width) {
+    if (dst == nullptr || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    if (src == nullptr) {
+        return;
+    }
+    const char* cursor = src;
+    const char* keep = src;
+    uint32_t code = 0;
+    int width = 0;
+    while (font::nextCodepoint(cursor, code)) {
+        const int glyph_w = font::glyphFor(code, false).width;
+        if (width + glyph_w > max_width) {
+            break;
+        }
+        width += glyph_w;
+        keep = cursor;
+    }
+    size_t n = static_cast<size_t>(keep - src);
+    if (n + 1 > dst_size) {
+        n = dst_size - 1;
+    }
+    std::memcpy(dst, src, n);
+    dst[n] = '\0';
+}
+
+int visibleMaskCount(int total, int max_width) {
+    if (total <= 0 || max_width <= 0) {
+        return 0;
+    }
+    const int star_w = font::glyphWidth(false);
+    int visible = star_w > 0 ? max_width / star_w : 0;
+    if (visible > total) {
+        visible = total;
+    }
+    return visible;
+}
+
+int listWindowStart(int selected, int count, int visible) {
+    int start = selected - visible / 2;
+    if (start < 0) {
+        start = 0;
+    }
+    if (start + visible > count) {
+        start = count - visible;
+    }
+    if (start < 0) {
+        start = 0;
+    }
+    return start;
+}
 
 void drawDetailCard(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
                     bool selected) {
@@ -97,6 +156,7 @@ void SettingsApp::onEnter(AppContext& context) {
     context_ = &context;
     pane_ = Pane::Category;
     editor_ = Editor::None;
+    wifi_section_ = WifiSection::Status;
     category_ = kDisplay;
     detail_ = 0;
     editor_index_ = 0;
@@ -158,6 +218,44 @@ const char* SettingsApp::networkStateLabel() const {
     }
 }
 
+const char* SettingsApp::networkStateName() const {
+    if (context_ == nullptr) {
+        return "Unknown";
+    }
+    switch (context_->network().state()) {
+        case NetworkState::Connecting:
+            return "Connecting";
+        case NetworkState::Connected:
+            return "Connected";
+        case NetworkState::Failed:
+            return "Failed";
+        case NetworkState::Unknown:
+            return "Unknown";
+        case NetworkState::Disconnected:
+        default:
+            return "Disconnected";
+    }
+}
+
+const char* SettingsApp::signalLevelName() const {
+    if (context_ == nullptr) {
+        return "";
+    }
+    switch (context_->network().signalStrength()) {
+        case SignalStrength::Strong:
+            return "Strong";
+        case SignalStrength::Mid:
+            return "Mid";
+        case SignalStrength::Weak:
+            return "Weak";
+        case SignalStrength::Weakest:
+            return "Weakest";
+        case SignalStrength::None:
+        default:
+            return "";
+    }
+}
+
 void SettingsApp::changeSelected(int delta) {
     if (context_ == nullptr || pane_ != Pane::Detail) {
         return;
@@ -210,40 +308,84 @@ bool SettingsApp::handleValueKey(const InputFrame& input) {
     return false;
 }
 
-int SettingsApp::wifiRowCount() const {
-    if (context_ == nullptr) {
-        return 2;
+int SettingsApp::wifiSectionCount() const { return kWifiSectionCount; }
+
+int SettingsApp::statusRowCount() const {
+    if (context_ != nullptr && context_->network().state() == NetworkState::Connected) {
+        return 5;
     }
-    return 2 + context_->network().profileCount() + context_->network().publicScanCount();
+    return 1;
 }
 
-SettingsApp::WifiRowKind SettingsApp::wifiRowKind(int index, int& payload) const {
-    payload = 0;
-    if (index <= 0) {
-        return WifiRowKind::Status;
+int SettingsApp::scanRowCount() const {
+    if (context_ == nullptr) {
+        return 1;
     }
-    const int profiles = context_ != nullptr ? context_->network().profileCount() : 0;
-    if (index <= profiles) {
-        payload = index - 1;
-        return WifiRowKind::Profile;
+    if (context_->network().scanInProgress()) {
+        return 1;
     }
-    if (index == profiles + 1) {
-        return WifiRowKind::ScanAction;
+    const int hits = context_->network().publicScanCount();
+    return hits > 0 ? hits : 1;
+}
+
+int SettingsApp::wifiDetailCount() const {
+    if (wifi_section_ == WifiSection::Status) {
+        return statusRowCount();
     }
-    payload = index - profiles - 2;
-    return WifiRowKind::ScanHit;
+    if (wifi_section_ == WifiSection::Saved) {
+        const int profiles = context_ != nullptr ? context_->network().profileCount() : 0;
+        return profiles > 0 ? profiles : 0;
+    }
+    return scanRowCount();
+}
+
+void SettingsApp::enterWifiStatusDetail() {
+    wifi_section_ = WifiSection::Status;
+    pane_ = Pane::Detail;
+    editor_ = Editor::Wifi;
+    editor_index_ = 0;
 }
 
 void SettingsApp::updateWifiEditor(const InputFrame& input) {
     if (input.action == InputAction::Back) {
-        editor_ = Editor::None;
+        if (pane_ == Pane::Detail) {
+            pane_ = Pane::Category;
+        } else {
+            editor_ = Editor::None;
+            pane_ = Pane::Detail;
+        }
         context_->consumeBack();
         context_->requestRedraw();
         return;
     }
 
+    if (pane_ == Pane::Category) {
+        if (input.action == InputAction::Up && static_cast<int>(wifi_section_) > 0) {
+            wifi_section_ = static_cast<WifiSection>(static_cast<int>(wifi_section_) - 1);
+            editor_index_ = 0;
+            context_->requestRedraw();
+            return;
+        }
+        if (input.action == InputAction::Down &&
+            static_cast<int>(wifi_section_) + 1 < wifiSectionCount()) {
+            wifi_section_ = static_cast<WifiSection>(static_cast<int>(wifi_section_) + 1);
+            editor_index_ = 0;
+            context_->requestRedraw();
+            return;
+        }
+        if (input.action == InputAction::Confirm) {
+            pane_ = Pane::Detail;
+            editor_index_ = 0;
+            if (wifi_section_ == WifiSection::Scan) {
+                context_->network().startScan();
+            }
+            context_->requestRedraw();
+        }
+        return;
+    }
+
     Network& network = context_->network();
-    const int count = wifiRowCount();
+    const int count = wifiDetailCount();
     if (input.action == InputAction::Up && editor_index_ > 0) {
         --editor_index_;
         context_->requestRedraw();
@@ -255,12 +397,11 @@ void SettingsApp::updateWifiEditor(const InputFrame& input) {
         return;
     }
 
-    int payload = 0;
-    const WifiRowKind kind = wifiRowKind(editor_index_, payload);
-    if (input.action == InputAction::Delete && kind == WifiRowKind::Profile) {
-        network.deleteProfile(payload);
-        if (editor_index_ >= wifiRowCount()) {
-            editor_index_ = wifiRowCount() - 1;
+    if (wifi_section_ == WifiSection::Saved && input.action == InputAction::Delete &&
+        editor_index_ >= 0 && editor_index_ < network.profileCount()) {
+        network.deleteProfile(editor_index_);
+        if (editor_index_ >= wifiDetailCount() && editor_index_ > 0) {
+            --editor_index_;
         }
         context_->requestRedraw();
         return;
@@ -268,37 +409,50 @@ void SettingsApp::updateWifiEditor(const InputFrame& input) {
     if (input.action != InputAction::Confirm) {
         return;
     }
-    if (kind == WifiRowKind::ScanAction) {
-        network.startScan();
-        context_->requestRedraw();
-        return;
-    }
-    if (kind == WifiRowKind::Profile) {
-        network.connectProfile(payload);
-        context_->requestRedraw();
-        return;
-    }
-    if (kind == WifiRowKind::ScanHit) {
-        WifiScanHit hit;
-        if (!network.publicScanAt(payload, hit)) {
-            return;
-        }
-        std::snprintf(pending_ssid_, sizeof(pending_ssid_), "%s", hit.ssid);
-        if (!hit.encrypted) {
-            network.connect(hit.ssid, "");
+
+    if (wifi_section_ == WifiSection::Status) {
+        if (network.state() == NetworkState::Connected && editor_index_ == 4) {
+            network.disconnect();
+            editor_index_ = 0;
             context_->requestRedraw();
-            return;
         }
-        password_len_ = 0;
-        password_[0] = '\0';
-        editor_ = Editor::Password;
-        context_->requestRedraw();
+        return;
     }
+    if (wifi_section_ == WifiSection::Saved) {
+        if (editor_index_ >= 0 && editor_index_ < network.profileCount()) {
+            network.connectProfile(editor_index_);
+            enterWifiStatusDetail();
+            context_->requestRedraw();
+        }
+        return;
+    }
+    if (network.scanInProgress() || network.publicScanCount() == 0) {
+        return;
+    }
+    WifiScanHit hit;
+    if (!network.publicScanAt(editor_index_, hit)) {
+        return;
+    }
+    std::snprintf(pending_ssid_, sizeof(pending_ssid_), "%s", hit.ssid);
+    if (!hit.encrypted) {
+        network.connect(hit.ssid, "");
+        enterWifiStatusDetail();
+        context_->requestRedraw();
+        return;
+    }
+    password_len_ = 0;
+    password_[0] = '\0';
+    editor_ = Editor::Password;
+    context_->requestRedraw();
 }
 
 void SettingsApp::updatePasswordEditor(const InputFrame& input) {
     if (input.action == InputAction::Back) {
         editor_ = Editor::Wifi;
+        pane_ = Pane::Detail;
+        wifi_section_ = WifiSection::Scan;
+        password_len_ = 0;
+        password_[0] = '\0';
         context_->consumeBack();
         context_->requestRedraw();
         return;
@@ -311,8 +465,13 @@ void SettingsApp::updatePasswordEditor(const InputFrame& input) {
     }
     if (input.action == InputAction::Confirm) {
         context_->network().connect(pending_ssid_, password_);
-        editor_ = Editor::Wifi;
+        password_len_ = 0;
+        password_[0] = '\0';
+        enterWifiStatusDetail();
         context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Up || input.action == InputAction::Down) {
         return;
     }
     for (uint8_t i = 0; i < input.textLength && password_len_ + 1 < sizeof(password_); ++i) {
@@ -408,6 +567,8 @@ void SettingsApp::updateSplitPane(const InputFrame& input) {
         }
         if (isWifi()) {
             editor_ = Editor::Wifi;
+            wifi_section_ = WifiSection::Status;
+            pane_ = Pane::Category;
             editor_index_ = 0;
             context_->requestRedraw();
             return;
@@ -578,60 +739,180 @@ void SettingsApp::drawWifiEditor() {
     drawStandardHeader(*context_, renderer, name());
 
     Network& network = context_->network();
-    const int count = wifiRowCount();
-    int row_y = layout::kContentBoth.y + 2;
-    const int row_w = layout::kWidth - 2 * layout::kChromeInset;
-    for (int i = 0; i < count; ++i) {
-        int payload = 0;
-        const WifiRowKind kind = wifiRowKind(i, payload);
-        const char* label = "";
+    const int left_x = layout::kChromeInset;
+    const int outer_y = layout::kContentBoth.y + 2;
+    const int outer_h = layout::kContentBoth.h - 4;
+    const Rect left_outer{left_x, outer_y, kCategoryPaneWidth, outer_h};
+    renderer.surface().fillRoundRect(left_outer, layout::kCardRadius, palette.card);
+
+    const int inner_x = left_x + kOuterPad;
+    const int inner_w = kCategoryPaneWidth - 2 * kOuterPad;
+    const int inner_y0 = outer_y + kOuterPad;
+    const bool left_focused = editor_ != Editor::Password && pane_ == Pane::Category;
+    for (int i = 0; i < kWifiSectionCount; ++i) {
+        const Rect card{inner_x, inner_y0 + i * (kInnerCardHeight + kInnerCardGap), inner_w,
+                        kInnerCardHeight};
+        const bool selected = i == static_cast<int>(wifi_section_);
+        if (selected && left_focused) {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.accent);
+        } else {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.canvas);
+            if (selected) {
+                renderer.surface().drawRoundRect(card, layout::kCardRadius, palette.accent);
+            }
+        }
+        const Color text = selected && left_focused
+                               ? palette.canvas
+                               : (selected ? palette.primary_text : palette.secondary_text);
+        renderer.surface().drawText({card.x + 4, centeredTextY(card.y, card.h)}, {text, 1},
+                                    kWifiSectionLabels[i]);
+    }
+
+    const int right_x = left_x + kCategoryPaneWidth + kPaneGap;
+    const int right_w = layout::kWidth - layout::kChromeInset - right_x;
+    const Rect right_outer{right_x, outer_y, right_w, outer_h};
+    renderer.surface().fillRoundRect(right_outer, layout::kCardRadius, palette.card);
+
+    const int detail_x = right_x + kOuterPad;
+    const int detail_w = right_w - 2 * kOuterPad;
+    int row_y = outer_y + kOuterPad;
+    const bool right_focused = editor_ == Editor::Password || pane_ == Pane::Detail;
+
+    if (editor_ == Editor::Password) {
+        const int text_pad = 4;
+        const Rect ssid_label{detail_x, row_y, detail_w, kInnerCardHeight};
+        renderer.surface().drawText({ssid_label.x + text_pad, centeredTextY(ssid_label.y, ssid_label.h)},
+                                    {palette.secondary_text, 1}, "SSID");
+        row_y += kInnerCardHeight + kInnerCardGap;
+        const Rect ssid_card{detail_x, row_y, detail_w, kInnerCardHeight};
+        renderer.surface().fillRoundRect(ssid_card, layout::kCardRadius, palette.canvas);
+        renderer.surface().drawRoundRect(ssid_card, layout::kCardRadius, palette.secondary_text);
+        char ssid_fit[33] = {};
+        copyPrefixFitting(pending_ssid_, ssid_fit, sizeof(ssid_fit), ssid_card.w - 2 * text_pad);
+        renderer.surface().drawText({ssid_card.x + text_pad, centeredTextY(ssid_card.y, ssid_card.h)},
+                                    {palette.primary_text, 1}, ssid_fit);
+        row_y += kInnerCardHeight + kInnerCardGap;
+
+        char count[8] = {};
+        std::snprintf(count, sizeof(count), "%u", static_cast<unsigned>(password_len_));
+        const Rect pass_label{detail_x, row_y, detail_w, kInnerCardHeight};
+        renderer.surface().drawText(
+            {pass_label.x + text_pad, centeredTextY(pass_label.y, pass_label.h)},
+            {palette.secondary_text, 1}, "Password");
+        renderer.surface().drawText(
+            {pass_label.x + pass_label.w - text_pad - font::textWidth(count, 1),
+             centeredTextY(pass_label.y, pass_label.h)},
+            {palette.secondary_text, 1}, count);
+        row_y += kInnerCardHeight + kInnerCardGap;
+        const Rect pass_card{detail_x, row_y, detail_w, kInnerCardHeight};
+        renderer.surface().fillRoundRect(pass_card, layout::kCardRadius, palette.canvas);
+        renderer.surface().drawRoundRect(pass_card, layout::kCardRadius, palette.accent);
+        constexpr int kCursorW = 1;
+        constexpr int kCursorGap = 1;
+        const int mask_max_w = pass_card.w - 2 * text_pad - kCursorW - kCursorGap;
+        const int visible = visibleMaskCount(password_len_, mask_max_w);
+        char masked[64] = {};
+        for (int i = 0; i < visible && i + 1 < static_cast<int>(sizeof(masked)); ++i) {
+            masked[i] = '*';
+        }
+        const int text_y = centeredTextY(pass_card.y, pass_card.h);
+        renderer.surface().drawText({pass_card.x + text_pad, text_y}, {palette.primary_text, 1},
+                                    masked);
+        const int cursor_x = pass_card.x + text_pad + font::textWidth(masked, 1) + kCursorGap;
+        renderer.surface().fillRect({cursor_x, text_y, kCursorW, font::kGlyphHeight}, palette.accent);
+        const KeyHint hints[] = {{"Ent", "join"}, {"Del", "bk"}, {"Esc", "back"}};
+        drawStandardFooter(renderer, hints, 3);
+        renderer.endFrame();
+        return;
+    }
+
+    if (wifi_section_ == WifiSection::Status) {
+        const int count = statusRowCount();
+        char signal[24] = {};
+        char ip[16] = {};
+        if (network.state() == NetworkState::Connected) {
+            std::snprintf(signal, sizeof(signal), "%s  %d dBm", signalLevelName(),
+                          static_cast<int>(network.rssi()));
+            network.stationIp(ip, sizeof(ip));
+        }
+        for (int i = 0; i < count; ++i) {
+            const char* label = "State";
+            const char* value = networkStateName();
+            if (i == 1) {
+                label = "SSID";
+                value = network.connectedSsid();
+            } else if (i == 2) {
+                label = "Signal";
+                value = signal;
+            } else if (i == 3) {
+                label = "IP";
+                value = ip;
+            } else if (i == 4) {
+                label = "Disconnect";
+                value = "";
+            }
+            const Rect row{detail_x, row_y, detail_w, kRowBoxHeight};
+            drawEditorRow(renderer.surface(), palette, row, label, value,
+                          right_focused && i == editor_index_);
+            row_y += kRowBoxHeight + kInnerCardGap;
+        }
+        const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
+        drawStandardFooter(renderer, hints, 2);
+        renderer.endFrame();
+        return;
+    }
+
+    if (wifi_section_ == WifiSection::Saved) {
+        const int profiles = network.profileCount();
+        if (profiles == 0) {
+            renderer.surface().drawText({detail_x + 4, row_y + 2}, {palette.secondary_text, 1},
+                                        "No saved");
+        } else {
+            for (int i = 0; i < profiles; ++i) {
+                const Rect row{detail_x, row_y, detail_w, kRowBoxHeight};
+                drawEditorRow(renderer.surface(), palette, row, network.profileSsid(i), "Saved",
+                              right_focused && i == editor_index_);
+                row_y += kRowBoxHeight + kInnerCardGap;
+            }
+        }
+        const KeyHint hints[] = {{"Ent", "ok"}, {"Del", "forget"}, {"Esc", "back"}};
+        drawStandardFooter(renderer, hints, 3);
+        renderer.endFrame();
+        return;
+    }
+
+    const int hits = network.publicScanCount();
+    const bool scanning = network.scanInProgress();
+    const int count = scanRowCount();
+    const int start = listWindowStart(editor_index_, count, kListVisible);
+    if (count > kListVisible) {
+        drawOverflowScrollbar(renderer.surface(), palette,
+                              {right_outer.x + right_outer.w - kOuterPad - kScrollbarWidth,
+                               outer_y + kOuterPad, kScrollbarWidth,
+                               outer_h - 2 * kOuterPad},
+                              count, start, kListVisible);
+    }
+    const int row_w =
+        count > kListVisible ? detail_w - kScrollbarWidth - 2 : detail_w;
+    for (int i = 0; i < kListVisible && start + i < count; ++i) {
+        const int index = start + i;
+        const char* label = scanning ? "Scanning" : "No networks";
         const char* value = "";
         char scan_label[36] = {};
-        if (kind == WifiRowKind::Status) {
-            label = "Status";
-            value = networkStateLabel();
-        } else if (kind == WifiRowKind::Profile) {
-            label = network.profileSsid(payload);
-            value = "Saved";
-        } else if (kind == WifiRowKind::ScanAction) {
-            label = network.scanInProgress() ? "Scanning" : "Scan";
-        } else {
+        if (!scanning && hits > 0) {
             WifiScanHit hit;
-            if (network.publicScanAt(payload, hit)) {
+            if (network.publicScanAt(index, hit)) {
                 std::snprintf(scan_label, sizeof(scan_label), "%s", hit.ssid);
                 label = scan_label;
                 value = hit.encrypted ? "Key" : "Open";
             }
         }
-        const Rect row{layout::kChromeInset, row_y, row_w, kRowBoxHeight};
-        drawEditorRow(renderer.surface(), palette, row, label, value, i == editor_index_);
+        const Rect row{detail_x, row_y, row_w, kRowBoxHeight};
+        drawEditorRow(renderer.surface(), palette, row, label, value,
+                      right_focused && index == editor_index_ && !scanning && hits > 0);
         row_y += kRowBoxHeight + kInnerCardGap;
-        if (row_y > layout::kFooter.y - kRowBoxHeight) {
-            break;
-        }
     }
-
-    const KeyHint hints[] = {{"Ent", "ok"}, {"Del", "forget"}, {"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 3);
-    renderer.endFrame();
-}
-
-void SettingsApp::drawPasswordEditor() {
-    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
-    UiRenderer renderer(context_->display(), palette);
-    renderer.beginFrame();
-    renderer.clearAppCanvas();
-    drawStandardHeader(*context_, renderer, name());
-
-    renderer.surface().drawText({layout::kChromeInset, layout::kContentBoth.y + 8},
-                                {palette.secondary_text, 1}, pending_ssid_);
-    char masked[64] = {};
-    for (uint8_t i = 0; i < password_len_ && i + 1 < sizeof(masked); ++i) {
-        masked[i] = '*';
-    }
-    renderer.surface().drawText({layout::kChromeInset, layout::kContentBoth.y + 24},
-                                {palette.primary_text, 1}, masked);
-    const KeyHint hints[] = {{"Ent", "join"}, {"Esc", "back"}};
+    const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
     drawStandardFooter(renderer, hints, 2);
     renderer.endFrame();
 }
@@ -643,22 +924,20 @@ void SettingsApp::drawTimeZoneEditor() {
     renderer.clearAppCanvas();
     drawStandardHeader(*context_, renderer, name());
 
-    const int visible = 5;
-    int start = tz_index_ - visible / 2;
-    if (start < 0) {
-        start = 0;
-    }
-    if (start + visible > timeZoneCount()) {
-        start = timeZoneCount() - visible;
-    }
-    if (start < 0) {
-        start = 0;
-    }
+    const int count = timeZoneCount();
+    const int start = listWindowStart(tz_index_, count, kListVisible);
     int row_y = layout::kContentBoth.y + 2;
     const int row_w = layout::kWidth - 2 * layout::kChromeInset;
-    for (int i = 0; i < visible && start + i < timeZoneCount(); ++i) {
+    if (count > kListVisible) {
+        drawOverflowScrollbar(renderer.surface(), palette,
+                              {layout::kWidth - layout::kChromeInset - kScrollbarWidth, row_y,
+                               kScrollbarWidth, kListVisible * (kRowBoxHeight + kInnerCardGap) - kInnerCardGap},
+                              count, start, kListVisible);
+    }
+    const int list_w = count > kListVisible ? row_w - kScrollbarWidth - 2 : row_w;
+    for (int i = 0; i < kListVisible && start + i < count; ++i) {
         const int index = start + i;
-        const Rect row{layout::kChromeInset, row_y, row_w, kRowBoxHeight};
+        const Rect row{layout::kChromeInset, row_y, list_w, kRowBoxHeight};
         drawEditorRow(renderer.surface(), palette, row, timeZoneIdAt(index), nullptr,
                       index == tz_index_);
         row_y += kRowBoxHeight + kInnerCardGap;
@@ -673,12 +952,8 @@ void SettingsApp::draw() {
     if (context_ == nullptr) {
         return;
     }
-    if (editor_ == Editor::Wifi) {
+    if (editor_ == Editor::Wifi || editor_ == Editor::Password) {
         drawWifiEditor();
-        return;
-    }
-    if (editor_ == Editor::Password) {
-        drawPasswordEditor();
         return;
     }
     if (editor_ == Editor::TimeZone) {
