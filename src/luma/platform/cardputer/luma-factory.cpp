@@ -2,9 +2,11 @@
 #include "cardputer-clock.h"
 #include "cardputer-display-adapter.h"
 #include "cardputer-input-adapter.h"
+#include "cardputer-wifi-radio.h"
 #include "nvs-littlefs-storage.h"
 #include "serial-diagnostics.h"
 
+#include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
 
@@ -46,8 +48,21 @@ Settings& settings() {
     return instance;
 }
 
+CardputerWifiRadio& radio() {
+    static CardputerWifiRadio instance;
+    return instance;
+}
+
+Network& network() {
+    static Network instance;
+    return instance;
+}
+
 }  // namespace
 
-Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics(), audio()) {}
+Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics(), audio(),
+                    network()) {
+    network().attach(radio(), storage(), diagnostics(), clock());
+}
 
 }  // namespace luma

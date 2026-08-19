@@ -6,6 +6,7 @@
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
 #include "luma/core/input-source.h"
+#include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/core/storage.h"
 #include "luma/ui/theme.h"
@@ -18,7 +19,7 @@ constexpr uint32_t kBootDurationMs = 1000;
 }  // namespace
 
 Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
-           Settings& settings, Diagnostics& diagnostics, Audio& audio)
+           Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network)
     : display_(display),
       input_(input),
       clock_(clock),
@@ -26,7 +27,8 @@ Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& s
       settings_(settings),
       diagnostics_(diagnostics),
       audio_(audio),
-      context_(display, settings, storage, clock, diagnostics),
+      network_(network),
+      context_(display, settings, storage, clock, diagnostics, network),
       input_manager_(input, diagnostics),
       app_manager_(context_, diagnostics),
       launcher_(app_manager_) {}
@@ -37,6 +39,9 @@ void Luma::begin() {
     storage_.begin();
     settings_.attach(storage_, diagnostics_, clock_);
     settings_.load();
+    clock_.attach(storage_, diagnostics_);
+    network_.load();
+    network_.begin();
     display_.setBrightness(settings_.brightness());
     audio_.setVolume(settings_.volume());
     registerApp(launcher_);
@@ -52,6 +57,12 @@ void Luma::begin() {
 void Luma::update() {
     InputFrame frame;
     input_manager_.poll(frame);
+
+    network_.update();
+    if (network_.takeConnectedEdge()) {
+        clock_.synchronize();
+    }
+    clock_.update();
 
     if (booting_) {
         const bool timed_out = (clock_.millis() - boot_started_ms_) >= kBootDurationMs;
@@ -70,7 +81,7 @@ void Luma::update() {
     if (context_.takeUiSound()) {
         playUiSound("click");
     }
-    requestHeaderTimeRedraw();
+    requestHeaderRedraw();
     app_manager_.drawIfNeeded();
     settings_.processDeferredSaves(clock_.millis());
     storage_.processDeferredSaves();
@@ -102,17 +113,32 @@ void Luma::finishBoot() {
     booting_ = false;
     const CivilTime time = clock_.localTime();
     last_header_minute_ = time.valid ? time.minute : 255;
+    last_header_network_ = headerNetworkKey();
+    last_scan_key_ = static_cast<uint8_t>(
+        (network_.scanInProgress() ? 0x80 : 0) | (network_.publicScanCount() & 0x7F));
     app_manager_.enter(AppManager::kLauncherId);
     app_manager_.drawIfNeeded();
 }
 
-void Luma::requestHeaderTimeRedraw() {
+uint8_t Luma::headerNetworkKey() const {
+    return static_cast<uint8_t>(
+        (static_cast<unsigned>(network_.state()) << 4) |
+        static_cast<unsigned>(network_.signalStrength()));
+}
+
+void Luma::requestHeaderRedraw() {
     const CivilTime time = clock_.localTime();
     const uint8_t minute_key = time.valid ? time.minute : 255;
-    if (minute_key == last_header_minute_) {
+    const uint8_t network_key = headerNetworkKey();
+    const uint8_t scan_key = static_cast<uint8_t>(
+        (network_.scanInProgress() ? 0x80 : 0) | (network_.publicScanCount() & 0x7F));
+    if (minute_key == last_header_minute_ && network_key == last_header_network_ &&
+        scan_key == last_scan_key_) {
         return;
     }
     last_header_minute_ = minute_key;
+    last_header_network_ = network_key;
+    last_scan_key_ = scan_key;
     context_.requestRedraw();
 }
 

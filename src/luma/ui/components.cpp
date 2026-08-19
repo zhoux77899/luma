@@ -1,9 +1,11 @@
 #include "luma/ui/components.h"
 
+#include "luma/assets/wifi-icons.h"
 #include "luma/ui/font.h"
 #include "luma/ui/layout.h"
 
 #include <cstdio>
+#include <cstring>
 
 namespace luma {
 namespace {
@@ -29,8 +31,84 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
                   static_cast<unsigned>(time.minute));
 }
 
+void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      NetworkState state, SignalStrength strength) {
+    if (state == NetworkState::Connected) {
+        drawWifiListGlyph(display, palette, origin, strength);
+        return;
+    }
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiDisconnected, palette.primary_text);
+}
+
+void drawWifiListGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                       SignalStrength strength) {
+    const Color on = palette.primary_text;
+    const Color off = palette.secondary_text;
+    const Color origin_color = strength == SignalStrength::None || strength == SignalStrength::Weakest
+                                   ? off
+                                   : on;
+    const Color mid = (strength == SignalStrength::Strong || strength == SignalStrength::Mid) ? on
+                                                                                              : off;
+    const Color outer = strength == SignalStrength::Strong ? on : off;
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListArc3, outer);
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListArc2, mid);
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiListDot, origin_color);
+}
+
+void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                   bool locked) {
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           locked ? assets::kLockClosed : assets::kLockOpen, palette.primary_text);
+}
+
+void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width) {
+    if (dst == nullptr || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    if (src == nullptr || max_width <= 0) {
+        return;
+    }
+    if (font::textWidth(src, 1) <= max_width) {
+        std::snprintf(dst, dst_size, "%s", src);
+        return;
+    }
+    const int dots_w = font::textWidth("...", 1);
+    const int budget = max_width - dots_w;
+    if (budget <= 0) {
+        std::snprintf(dst, dst_size, "...");
+        return;
+    }
+    const char* cursor = src;
+    const char* keep = src;
+    uint32_t code = 0;
+    int width = 0;
+    while (font::nextCodepoint(cursor, code)) {
+        const int glyph_w = font::glyphFor(code, false).width;
+        if (width + glyph_w > budget) {
+            break;
+        }
+        width += glyph_w;
+        keep = cursor;
+    }
+    size_t n = static_cast<size_t>(keep - src);
+    if (n + 4 > dst_size) {
+        n = dst_size > 4 ? dst_size - 4 : 0;
+    }
+    if (n > 0) {
+        std::memcpy(dst, src, n);
+    }
+    dst[n] = '\0';
+    std::snprintf(dst + n, dst_size - n, "...");
+}
+
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
-                   const char* title, const char* time) {
+                   const char* title, const char* time, NetworkState state,
+                   SignalStrength strength) {
     display.fillRect(layout::kHeader, palette.canvas);
     if (logo != nullptr) {
         display.drawBitmap({layout::kHeaderLogoX, layout::kHeaderLogoY}, layout::kHeaderLogoSize,
@@ -41,8 +119,14 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
                      {palette.primary_text, layout::kHeaderTitleSize},
                      title != nullptr ? title : "");
     const char* label = time != nullptr ? time : "--:--";
+    const int cluster_h =
+        layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap + font::kGlyphHeight;
+    const int cluster_y = (layout::kHeaderHeight - cluster_h) / 2;
+    const int icon_x = layout::kWidth - layout::kChromeInset - layout::kHeaderNetworkIconSize;
     const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
-    display.drawText({time_x, headerTextY()}, {palette.primary_text, 1}, label);
+    drawNetworkGlyph(display, palette, {icon_x, cluster_y}, state, strength);
+    display.drawText({time_x, cluster_y + layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap},
+                     {palette.primary_text, 1}, label);
 }
 
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
@@ -127,6 +211,27 @@ void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, con
         }
         x += kGroupGap;
     }
+}
+
+void drawOverflowScrollbar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                           int count, int start, int visible) {
+    if (count <= visible || bounds.w <= 0 || bounds.h <= 0) {
+        return;
+    }
+    display.fillRect(bounds, palette.secondary_text);
+    int thumb_h = (visible * bounds.h) / count;
+    if (thumb_h < 4) {
+        thumb_h = 4;
+    }
+    if (thumb_h > bounds.h) {
+        thumb_h = bounds.h;
+    }
+    const int max_start = count - visible;
+    int thumb_y = bounds.y;
+    if (max_start > 0) {
+        thumb_y = bounds.y + (start * (bounds.h - thumb_h)) / max_start;
+    }
+    display.fillRect({bounds.x, thumb_y, bounds.w, thumb_h}, palette.primary_text);
 }
 
 void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,

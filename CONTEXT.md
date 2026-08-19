@@ -9,11 +9,11 @@ The firmware product that runs on Cardputer ADV, and the coordinator that boots 
 _Avoid_: OS, system, shell
 
 **Core**:
-The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, and Audio contracts.
+The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, Audio, Clock, and Network contracts.
 _Avoid_: shell, OS, runtime
 
 **AppContext**:
-The service bag handed to an App on enter: display, Settings, Storage, Clock, and redraw.
+The service bag handed to an App on enter: display, Settings, Storage, Clock, Network, and redraw.
 
 **AppManager**:
 The owner of the one current App and the static registry that routes enter, exit, Back, and shortcuts.
@@ -38,8 +38,48 @@ The brief Logo splash Luma shows before entering Launcher. It is not an App.
 _Avoid_: splash App, boot App, home splash
 
 **Clock**:
-The service that provides frame time and local civil time. Civil time is invalid until the device clock is set.
-_Avoid_: RTC, wall clock service, timer
+The service that provides frame time and local civil time. Civil time stays invalid until the Clock is synchronized; a temporary disconnect keeps the last valid civil time.
+_Avoid_: RTC, wall clock service, timer, NTP service
+
+**Time**:
+The Settings category for civil-time preferences. It is not the Clock service.
+_Avoid_: Clock (as a Settings category), Time zone (as a category name)
+
+**Time zone**:
+The persisted IANA civil-time selection the Clock applies. The Time category is where the user edits it.
+_Avoid_: TZ env, POSIX string, offset setting
+
+**Time zone section**:
+One of UTC, America, Europe, Asia, or Australia in the Time nested split of the Settings App.
+_Avoid_: Settings category, continent, tab
+
+**Network**:
+The Core service that owns Wi-Fi station connectivity, profiles, scan, and reconnect. It is not the Settings category of the same name. A user Disconnect holds reconnect until the next connect or reboot.
+_Avoid_: Wi-Fi manager, connectivity stack, radio
+
+**Wi-Fi profile**:
+A remembered SSID and credential pair. At most five are kept, and a profile is persisted only after a successful connection. A pending credential is discarded on Failed and does not become a profile.
+_Avoid_: known network, saved network, wifi config
+
+**Wi-Fi section**:
+One of Status, Saved, or Scan in the Wi-Fi nested split of the Settings App.
+_Avoid_: Settings category, tab
+
+**Pending credential**:
+The password typed in the Wi-Fi Scan detail to join an encrypted scan hit. It is not a Wi-Fi profile until the connection succeeds.
+_Avoid_: WPA key, PSK, saved password
+
+**Luma UI font**:
+The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Chinese uses the wider CJK cell. A missing character becomes one question mark.
+_Avoid_: M5GFX Font0, system font, per-host typeface
+
+**Header status cluster**:
+The compact right-side Header region that stacks a 10x10 network glyph above civil time, both right-aligned.
+_Avoid_: status bar, system tray, RSSI readout
+
+**Signal strength**:
+The four-level quantization of a radio. Header, Saved, and Scan share one 10x10 glyph: a 2x2 origin and two arcs when RSSI is known. Weakest paints every layer as secondary text. Non-connected Header states use the same 10x10 mark with a diagonal slash. Numeric dBm does not appear in the Header or in those rows. The Wi-Fi Status Signal row shows dBm without a level name.
+_Avoid_: Header RSSI, color-coded status dot, Strong/Mid/Weak as Status copy
 
 **App**:
 A statically compiled, registered program the user can enter from Launcher and leave with Back.
@@ -69,7 +109,7 @@ _Avoid_: Theme preference, palette name as a product setting
 The App that edits Settings. It uses a category pane and a detail pane.
 
 **Settings category**:
-One of Display, Sound, Network, Power, or System in the Settings App.
+One of Display, Sound, Network, Time, Power, or System in the Settings App.
 _Avoid_: tab, menu group
 
 **Category pane**:

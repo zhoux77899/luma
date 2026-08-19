@@ -6,10 +6,16 @@
 #include "luma/core/display.h"
 #include "luma/core/input-source.h"
 #include "luma/core/in-memory-storage.h"
+#include "luma/core/network.h"
 #include "luma/core/storage.h"
+#include "luma/core/time-zone.h"
+#include "luma/core/wifi-radio.h"
 #include "luma/core/app.h"
 #include "luma/core/app-context.h"
+#include "luma/core/settings.h"
+#include "luma/luma.h"
 
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -46,12 +52,21 @@ struct DrawnBitmap {
     int height = 0;
 };
 
+struct DrawnMono {
+    Point origin;
+    int width = 0;
+    int height = 0;
+    Color color{};
+    const uint16_t* rows = nullptr;
+};
+
 class FakeDisplay : public DisplaySurface {
 public:
     std::vector<std::string> texts;
     std::vector<DrawnShape> fills;
     std::vector<DrawnShape> strokes;
     std::vector<DrawnBitmap> bitmaps;
+    std::vector<DrawnMono> monos;
     int draw_text_count = 0;
     bool begun = false;
     uint8_t brightness = 255;
@@ -64,6 +79,7 @@ public:
         fills.clear();
         strokes.clear();
         bitmaps.clear();
+        monos.clear();
         draw_text_count = 0;
     }
     void clear(Color) override {}
@@ -77,6 +93,10 @@ public:
     }
     void drawBitmap(Point origin, int width, int height, const uint16_t*) override {
         bitmaps.push_back({origin, width, height});
+    }
+    void drawMonoBitmap(Point origin, int width, int height, const uint16_t* rows,
+                        Color color) override {
+        monos.push_back({origin, width, height, color, rows});
     }
     void setBrightness(uint8_t percent) override { brightness = percent; }
     void endFrame() override {}
@@ -102,6 +122,15 @@ public:
     bool hasFill(Rect rect, Color color) const {
         for (const auto& fill : fills) {
             if (rectsEqual(fill.rect, rect) && colorsEqual(fill.color, color)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasMono(const uint16_t* rows, Color color) const {
+        for (const auto& mono : monos) {
+            if (mono.rows == rows && colorsEqual(mono.color, color)) {
                 return true;
             }
         }
@@ -134,9 +163,112 @@ class FakeClock : public Clock {
 public:
     uint32_t now = 0;
     CivilTime civil{};
+    bool use_unix = false;
+    bool synchronized = false;
+    bool ntp_succeeds = true;
+    int64_t unix_utc = 0;
+    char tz[40] = "UTC";
+    Storage* storage = nullptr;
+    int synchronize_count = 0;
 
     uint32_t millis() const override { return now; }
-    CivilTime localTime() const override { return civil; }
+
+    CivilTime localTime() const override {
+        if (!use_unix) {
+            return civil;
+        }
+        if (!synchronized) {
+            return {};
+        }
+        return civilTimeAt(unix_utc, tz);
+    }
+
+    void synchronize() override {
+        ++synchronize_count;
+        if (ntp_succeeds) {
+            synchronized = true;
+        }
+    }
+
+    void attach(Storage& attached, Diagnostics&) override { storage = &attached; }
+
+    void setTimeZone(const char* id) override {
+        std::snprintf(tz, sizeof(tz), "%s", canonicalTimeZoneId(id));
+        if (storage != nullptr) {
+            storage->savePref("timezone", tz, sizeof(tz));
+        }
+    }
+
+    const char* timeZoneId() const override { return tz; }
+};
+
+class FakeWifiRadio : public WifiRadio {
+public:
+    luma::NetworkState state = luma::NetworkState::Disconnected;
+    bool scan_done = false;
+    std::vector<luma::WifiScanHit> hits;
+    char ssid[33] = {};
+    int8_t rssi_dbm = -55;
+    int connect_calls = 0;
+    int scan_calls = 0;
+    char last_password[64] = {};
+
+    void startScan() override {
+        ++scan_calls;
+        scan_done = false;
+    }
+
+    void completeScan() { scan_done = true; }
+
+    void addHit(const char* name, bool encrypted, int8_t rssi = -60) {
+        luma::WifiScanHit hit;
+        std::snprintf(hit.ssid, sizeof(hit.ssid), "%s", name);
+        hit.encrypted = encrypted;
+        hit.rssi = rssi;
+        hits.push_back(hit);
+    }
+
+    bool scanComplete() const override { return scan_done; }
+    int scanCount() const override { return static_cast<int>(hits.size()); }
+
+    bool scanAt(int index, luma::WifiScanHit& out) const override {
+        if (index < 0 || index >= static_cast<int>(hits.size())) {
+            return false;
+        }
+        out = hits[static_cast<size_t>(index)];
+        return true;
+    }
+
+    void connect(const char* name, const char* password) override {
+        ++connect_calls;
+        std::snprintf(ssid, sizeof(ssid), "%s", name != nullptr ? name : "");
+        std::snprintf(last_password, sizeof(last_password), "%s", password != nullptr ? password : "");
+        state = luma::NetworkState::Connecting;
+    }
+
+    void succeed() { state = luma::NetworkState::Connected; }
+    void fail() { state = luma::NetworkState::Failed; }
+    void drop() { state = luma::NetworkState::Disconnected; }
+
+    void disconnect() override {
+        state = luma::NetworkState::Disconnected;
+        ssid[0] = '\0';
+    }
+
+    luma::NetworkState radioState() const override { return state; }
+    const char* connectedSsid() const override { return ssid; }
+    int8_t rssi() const override { return rssi_dbm; }
+
+    void stationIp(char* out, size_t n) const override {
+        if (out == nullptr || n == 0) {
+            return;
+        }
+        if (state != luma::NetworkState::Connected) {
+            out[0] = '\0';
+            return;
+        }
+        std::snprintf(out, n, "192.168.1.10");
+    }
 };
 
 class FakeInputSource : public InputSource {
@@ -251,6 +383,25 @@ inline InputFrame makeText(char character) {
     frame.pressed = true;
     return frame;
 }
+
+template <typename StorageT = InMemoryStorage>
+struct LumaHarness {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    StorageT storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    Network network;
+    Luma luma;
+
+    LumaHarness()
+        : luma(display, input, clock, storage, settings, diagnostics, audio, network) {
+        network.attach(radio, storage, diagnostics, clock);
+    }
+};
 
 }  // namespace test
 }  // namespace luma
