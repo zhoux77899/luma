@@ -1,5 +1,6 @@
 #pragma once
 
+#include "luma/core/battery-types.h"
 #include "luma/core/clock.h"
 #include "luma/core/display.h"
 #include "luma/core/network-types.h"
@@ -18,10 +19,15 @@ void drawWifiListGlyph(DisplaySurface& display, const theme::Palette& palette, P
                        SignalStrength strength);
 void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
                    bool locked);
+void drawBatteryGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      const BatteryReading& reading);
+void drawBatteryHistory(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                        const BatterySample* samples, int count);
 void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width);
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
                    const char* title, const char* time, NetworkState state = NetworkState::Disconnected,
-                   SignalStrength strength = SignalStrength::None);
+                   SignalStrength strength = SignalStrength::None,
+                   const BatteryReading& battery = {});
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
                   const char* label, bool selected, const char* value = nullptr,
                   bool focused = true);

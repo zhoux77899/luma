@@ -1,5 +1,6 @@
 #include "luma/ui/components.h"
 
+#include "luma/assets/battery-icons.h"
 #include "luma/assets/wifi-icons.h"
 #include "luma/ui/font.h"
 #include "luma/ui/layout.h"
@@ -65,6 +66,99 @@ void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point
                            locked ? assets::kLockClosed : assets::kLockOpen, palette.primary_text);
 }
 
+void drawBatteryGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      const BatteryReading& reading) {
+    Color color = palette.secondary_text;
+    if (reading.percent_valid) {
+        color = theme::batteryBandColor(batteryBand(reading.percent));
+    }
+    display.drawMonoBitmap(origin, assets::kBatteryIconSize, assets::kBatteryIconSize,
+                           assets::kBatteryOutline, color);
+    const uint8_t fill = batteryFillLevel(reading);
+    const uint16_t* layers[] = {nullptr, assets::kBatteryFill1, assets::kBatteryFill2,
+                                assets::kBatteryFill3, assets::kBatteryFill4, assets::kBatteryFill5};
+    for (uint8_t i = 1; i <= fill && i <= 5; ++i) {
+        display.drawMonoBitmap(origin, assets::kBatteryIconSize, assets::kBatteryIconSize, layers[i],
+                               color);
+    }
+}
+
+void drawBatteryHistory(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                        const BatterySample* samples, int count) {
+    constexpr int kSlots = 60;
+    constexpr int kBarWidth = 1;
+    constexpr int kBarGap = 1;
+    constexpr int kStride = kBarWidth + kBarGap;
+    constexpr int kPlotHeight = 50;
+    constexpr int kLabelGap = 2;
+    constexpr int kLabelHeight = font::kGlyphHeight;
+    constexpr int kChartHeight = kPlotHeight + kLabelGap + kLabelHeight;
+    if (bounds.w <= 0 || bounds.h < kChartHeight) {
+        return;
+    }
+    const int chart_w = kSlots * kStride;
+    int origin_x = bounds.x;
+    if (bounds.w > chart_w) {
+        origin_x += (bounds.w - chart_w) / 2;
+    }
+    const int plot_y = bounds.y;
+    display.fillRect({origin_x, plot_y, chart_w, 1}, palette.secondary_text);
+    display.fillRect({origin_x, plot_y + kPlotHeight / 2, chart_w, 1}, palette.secondary_text);
+    display.fillRect({origin_x, plot_y + kPlotHeight - 1, chart_w, 1}, palette.secondary_text);
+
+    if (samples != nullptr && count > 0) {
+        int visual = 0;
+        for (int i = 0; i < count; ++i) {
+            if (i > 0 && batteryHistoryGap(samples[i - 1], samples[i])) {
+                ++visual;
+            }
+            ++visual;
+        }
+        const int skip = visual > kSlots ? visual - kSlots : 0;
+        int consumed = 0;
+        int slot = kSlots - (visual - skip);
+        for (int i = 0; i < count && slot < kSlots; ++i) {
+            const bool gap = i > 0 && batteryHistoryGap(samples[i - 1], samples[i]);
+            const int cost = (gap ? 1 : 0) + 1;
+            if (consumed + cost <= skip) {
+                consumed += cost;
+                continue;
+            }
+            if (consumed < skip) {
+                consumed = skip;
+            } else if (gap) {
+                ++slot;
+            }
+            if (slot >= kSlots) {
+                break;
+            }
+            const BatteryReading& reading = samples[i].reading;
+            if (reading.percent_valid) {
+                int height = static_cast<int>(reading.percent) / 2;
+                if (height < 1) {
+                    height = 1;
+                }
+                if (height > kPlotHeight) {
+                    height = kPlotHeight;
+                }
+                const Color color = theme::batteryBandColor(batteryBand(reading.percent));
+                display.fillRect(
+                    {origin_x + slot * kStride, plot_y + kPlotHeight - height, kBarWidth, height},
+                    color);
+            }
+            ++slot;
+        }
+    }
+
+    const int label_y = plot_y + kPlotHeight + kLabelGap;
+    const TextStyle label_style{palette.secondary_text, 1};
+    display.drawText({origin_x, label_y}, label_style, "-60");
+    const int mid_w = font::textWidth("-30", 1);
+    display.drawText({origin_x + chart_w / 2 - mid_w / 2, label_y}, label_style, "-30");
+    const int zero_w = font::textWidth("0", 1);
+    display.drawText({origin_x + chart_w - zero_w, label_y}, label_style, "0");
+}
+
 void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width) {
     if (dst == nullptr || dst_size == 0) {
         return;
@@ -108,7 +202,7 @@ void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width
 
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
                    const char* title, const char* time, NetworkState state,
-                   SignalStrength strength) {
+                   SignalStrength strength, const BatteryReading& battery) {
     display.fillRect(layout::kHeader, palette.canvas);
     if (logo != nullptr) {
         display.drawBitmap({layout::kHeaderLogoX, layout::kHeaderLogoY}, layout::kHeaderLogoSize,
@@ -122,9 +216,9 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
     const int cluster_h =
         layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap + font::kGlyphHeight;
     const int cluster_y = (layout::kHeaderHeight - cluster_h) / 2;
-    const int icon_x = layout::kWidth - layout::kChromeInset - layout::kHeaderNetworkIconSize;
     const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
-    drawNetworkGlyph(display, palette, {icon_x, cluster_y}, state, strength);
+    drawNetworkGlyph(display, palette, {layout::kHeaderNetworkIconX, cluster_y}, state, strength);
+    drawBatteryGlyph(display, palette, {layout::kHeaderBatteryIconX, cluster_y}, battery);
     display.drawText({time_x, cluster_y + layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap},
                      {palette.primary_text, 1}, label);
 }

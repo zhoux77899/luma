@@ -18,6 +18,7 @@ public:
     virtual ~Clock() = default;
     virtual uint32_t millis() const = 0;
     virtual CivilTime localTime() const = 0;
+    virtual int64_t unixUtc() const { return 0; }
     virtual void update() {}
     virtual void synchronize() {}
     virtual void attach(Storage& storage, Diagnostics& diagnostics) {

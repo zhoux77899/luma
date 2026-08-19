@@ -77,4 +77,6 @@ CivilTime CardputerClock::localTime() const {
     return civilTimeAt(last_unix_, tz_);
 }
 
+int64_t CardputerClock::unixUtc() const { return synced_ ? last_unix_ : 0; }
+
 }  // namespace luma

@@ -2,6 +2,7 @@
 
 #include "luma/assets/wifi-icons.h"
 #include "luma/core/app-context.h"
+#include "luma/core/battery.h"
 #include "luma/core/clock.h"
 #include "luma/core/display.h"
 #include "luma/core/network.h"
@@ -26,7 +27,7 @@ enum Category : int {
     kSound = 1,
     kNetwork = 2,
     kTime = 3,
-    kPower = 4,
+    kBattery = 4,
     kSystem = 5,
     kCategoryCount = 6
 };
@@ -41,7 +42,7 @@ constexpr int kBarHeight = 4;
 constexpr int kBarCardHeight = 22;
 constexpr int kCardPad = 3;
 
-const char* kCategoryLabels[kCategoryCount] = {"Display", "Sound", "Network", "Time", "Power",
+const char* kCategoryLabels[kCategoryCount] = {"Display", "Sound", "Network", "Time", "Battery",
                                               "System"};
 constexpr int kCategoryVisible = 5;
 
@@ -233,6 +234,9 @@ void SettingsApp::applyImmediate() {
 int SettingsApp::detailCount() const {
     if (category_ == kDisplay) {
         return 2;
+    }
+    if (category_ == kBattery) {
+        return 0;
     }
     return 1;
 }
@@ -703,10 +707,6 @@ void SettingsApp::detailLabelValue(int index, const char*& label, const char*& v
         value = zone;
         return;
     }
-    if (category_ == kPower) {
-        label = "Battery";
-        return;
-    }
     label = "About";
 }
 
@@ -765,6 +765,42 @@ void SettingsApp::drawSplitPane() {
     const int detail_x = right_x + kOuterPad;
     const int detail_w = right_w - 2 * kOuterPad;
     int row_y = outer_y + kOuterPad;
+
+    if (category_ == kBattery) {
+        if (pane_ == Pane::Detail) {
+            renderer.surface().drawRoundRect(right_outer, layout::kCardRadius, palette.accent);
+        }
+        Battery& battery = context_->battery();
+        const BatteryReading reading = battery.current();
+        char percent[8] = "--";
+        if (reading.percent_valid) {
+            std::snprintf(percent, sizeof(percent), "%u%%", static_cast<unsigned>(reading.percent));
+        }
+        char volts[12] = "--";
+        if (reading.voltage_valid) {
+            std::snprintf(volts, sizeof(volts), "%u.%02u V",
+                          static_cast<unsigned>(reading.voltage_mv / 1000),
+                          static_cast<unsigned>((reading.voltage_mv % 1000) / 10));
+        }
+        renderer.surface().drawText({detail_x + 4, centeredTextY(row_y, kRowBoxHeight)},
+                                    {palette.primary_text, 1}, percent);
+        const int volts_x = detail_x + detail_w - 4 - font::textWidth(volts, 1);
+        renderer.surface().drawText({volts_x, centeredTextY(row_y, kRowBoxHeight)},
+                                    {palette.secondary_text, 1}, volts);
+        row_y += kRowBoxHeight + kInnerCardGap;
+        const int chart_bottom = outer_y + outer_h - kOuterPad;
+        const Rect chart{detail_x, row_y, detail_w, chart_bottom - row_y};
+        BatterySample history[Battery::kMaxSamples] = {};
+        const int n = battery.sampleCount();
+        for (int i = 0; i < n; ++i) {
+            battery.sampleAt(i, history[i]);
+        }
+        drawBatteryHistory(renderer.surface(), palette, chart, history, n);
+        const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
+        drawStandardFooter(renderer, hints, 2);
+        renderer.endFrame();
+        return;
+    }
 
     char brightness[8] = {};
     std::snprintf(brightness, sizeof(brightness), "%u%%",

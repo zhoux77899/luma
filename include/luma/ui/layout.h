@@ -14,8 +14,12 @@ constexpr int kHeaderLogoSize = 28;
 constexpr int kHeaderLogoX = 6;
 constexpr int kHeaderLogoY = 2;
 constexpr int kHeaderNetworkIconSize = 10;
+constexpr int kHeaderBatteryIconSize = 10;
 constexpr int kHeaderStatusGap = 2;
 constexpr int kChromeInset = 6;
+constexpr int kHeaderBatteryIconX = kWidth - kChromeInset - kHeaderBatteryIconSize;
+constexpr int kHeaderNetworkIconX =
+    kHeaderBatteryIconX - kHeaderStatusGap - kHeaderNetworkIconSize;
 
 constexpr Rect kHeader{0, 0, 240, kHeaderHeight};
 constexpr Rect kFooter{0, kHeight - kFooterHeight, 240, kFooterHeight};
