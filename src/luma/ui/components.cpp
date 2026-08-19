@@ -33,25 +33,12 @@ void formatCivilTime(const CivilTime& time, char* out, unsigned out_size) {
 
 void drawNetworkGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
                       NetworkState state, SignalStrength strength) {
-    const Color on = palette.primary_text;
-    const Color off = palette.secondary_text;
-    if (state != NetworkState::Connected) {
-        display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize,
-                               assets::kWifiDisconnected, on);
+    if (state == NetworkState::Connected) {
+        drawWifiListGlyph(display, palette, origin, strength);
         return;
     }
-
-    const Color arc3 = strength == SignalStrength::Strong ? on : off;
-    const Color arc2 = (strength == SignalStrength::Strong || strength == SignalStrength::Mid) ? on
-                                                                                               : off;
-    const Color arc1 = strength == SignalStrength::Weakest ? off : on;
-    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc3,
-                           arc3);
-    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc2,
-                           arc2);
-    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiArc1,
-                           arc1);
-    display.drawMonoBitmap(origin, assets::kWifiIconSize, assets::kWifiIconSize, assets::kWifiDot, on);
+    display.drawMonoBitmap(origin, assets::kWifiListIconSize, assets::kWifiListIconSize,
+                           assets::kWifiDisconnected, palette.primary_text);
 }
 
 void drawWifiListGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
@@ -132,11 +119,14 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
                      {palette.primary_text, layout::kHeaderTitleSize},
                      title != nullptr ? title : "");
     const char* label = time != nullptr ? time : "--:--";
+    const int cluster_h =
+        layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap + font::kGlyphHeight;
+    const int cluster_y = (layout::kHeaderHeight - cluster_h) / 2;
+    const int icon_x = layout::kWidth - layout::kChromeInset - layout::kHeaderNetworkIconSize;
     const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
-    const int icon_x = time_x - layout::kHeaderStatusGap - layout::kHeaderNetworkIconSize;
-    const int icon_y = (layout::kHeaderHeight - layout::kHeaderNetworkIconSize) / 2;
-    drawNetworkGlyph(display, palette, {icon_x, icon_y}, state, strength);
-    display.drawText({time_x, headerTextY()}, {palette.primary_text, 1}, label);
+    drawNetworkGlyph(display, palette, {icon_x, cluster_y}, state, strength);
+    display.drawText({time_x, cluster_y + layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap},
+                     {palette.primary_text, 1}, label);
 }
 
 void drawMenuItem(DisplaySurface& display, const theme::Palette& palette, Rect bounds,

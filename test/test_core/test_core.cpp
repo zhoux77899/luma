@@ -1616,13 +1616,13 @@ void test_header_network_glyphs_use_icons_not_spectrum_colors() {
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Connected,
                            luma::SignalStrength::Weakest);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc1, palette.secondary_text));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc3, palette.secondary_text));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDot, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListDot, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc2, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc3, palette.secondary_text));
     display.beginFrame();
     luma::drawNetworkGlyph(display, palette, {0, 0}, luma::NetworkState::Connected,
                            luma::SignalStrength::Strong);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiArc3, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiListArc3, palette.primary_text));
 }
 
 void test_network_scan_dedups_ssid_keeping_strongest_rssi() {
@@ -1819,6 +1819,15 @@ void test_header_time_and_title_do_not_clip() {
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("--:--"));
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
+    bool stacked = false;
+    for (const auto& mono : display.monos) {
+        if (mono.rows == luma::assets::kWifiDisconnected && mono.origin.x == 224 &&
+            mono.origin.y == 5 && mono.width == 10 && mono.height == 10) {
+            stacked = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(stacked);
 }
 
 void test_signal_strength_from_rssi_bins() {

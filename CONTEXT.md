@@ -66,11 +66,11 @@ The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Ch
 _Avoid_: M5GFX Font0, system font, per-host typeface
 
 **Header status cluster**:
-The compact right-side Header region that shows the network glyph and civil time.
+The compact right-side Header region that stacks a 10x10 network glyph above civil time, both right-aligned.
 _Avoid_: status bar, system tray, RSSI readout
 
 **Signal strength**:
-The four-level quantization of a radio. The Header status cluster draws three arcs plus a corner dot for the connected station; Weakest lights only the dot. Saved and Scan rows use a 10x10 glyph with a 2x2 origin and two arcs when RSSI is known; Weakest paints every layer as secondary text. Numeric dBm does not appear in the Header or in those rows. The Wi-Fi Status Signal row shows dBm without a level name.
+The four-level quantization of a radio. Header, Saved, and Scan share one 10x10 glyph: a 2x2 origin and two arcs when RSSI is known. Weakest paints every layer as secondary text. Non-connected Header states use the same 10x10 mark with a diagonal slash. Numeric dBm does not appear in the Header or in those rows. The Wi-Fi Status Signal row shows dBm without a level name.
 _Avoid_: Header RSSI, color-coded status dot, Strong/Mid/Weak as Status copy
 
 **App**:
