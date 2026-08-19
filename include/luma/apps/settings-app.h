@@ -40,6 +40,7 @@ private:
     void drawWifiEditor();
     void drawTimeZoneEditor();
     void enterWifiStatusDetail();
+    void enterTimeZoneEditor();
     int wifiSectionCount() const;
     int wifiDetailCount() const;
     int statusRowCount() const;
@@ -54,6 +55,7 @@ private:
     int category_ = 0;
     int detail_ = 0;
     int editor_index_ = 0;
+    int tz_section_ = 0;
     int tz_index_ = 0;
     char pending_ssid_[33] = {};
     char password_[64] = {};

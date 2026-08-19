@@ -361,8 +361,9 @@ void test_launcher_confirm_opens_settings() {
     TEST_ASSERT_TRUE(display.hasText("Display"));
     TEST_ASSERT_TRUE(display.hasText("Sound"));
     TEST_ASSERT_TRUE(display.hasText("Network"));
+    TEST_ASSERT_TRUE(display.hasText("Time"));
     TEST_ASSERT_TRUE(display.hasText("Power"));
-    TEST_ASSERT_TRUE(display.hasText("System"));
+    TEST_ASSERT_FALSE(display.hasText("System"));
     TEST_ASSERT_TRUE(display.hasText("Brightness"));
     TEST_ASSERT_TRUE(display.hasText("80%"));
     TEST_ASSERT_TRUE(display.hasText("Theme"));
@@ -374,8 +375,9 @@ void test_launcher_confirm_opens_settings() {
     TEST_ASSERT_FALSE(display.hasText("On"));
     TEST_ASSERT_FALSE(display.hasText("About"));
     TEST_ASSERT_FALSE(display.hasText("Coming soon"));
-    TEST_ASSERT_TRUE(display.hasFill({9, 37, 82, 14}, kTsuyukusa));
-    TEST_ASSERT_FALSE(display.hasFill({9, 37, 82, 14}, kAccent));
+    TEST_ASSERT_FALSE(display.hasText("Time zone"));
+    TEST_ASSERT_TRUE(display.hasFill({9, 37, 78, 14}, kTsuyukusa));
+    TEST_ASSERT_FALSE(display.hasFill({9, 37, 78, 14}, kAccent));
 }
 
 void test_stub_back_returns_to_launcher() {
@@ -836,6 +838,8 @@ void test_settings_opens_about_with_build_identity() {
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     input.push(makeAction(InputAction::Confirm));
@@ -964,8 +968,7 @@ void test_settings_placeholder_confirm_stays() {
     luma.update();
 
     TEST_ASSERT_TRUE(display.hasText("Wi-Fi"));
-    TEST_ASSERT_TRUE(display.hasText("Time zone"));
-    TEST_ASSERT_TRUE(display.hasText("UTC"));
+    TEST_ASSERT_FALSE(display.hasText("Time zone"));
 
     input.push(makeAction(InputAction::Confirm));
     luma.update();
@@ -979,12 +982,22 @@ void test_settings_placeholder_confirm_stays() {
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     TEST_ASSERT_TRUE(display.hasText("Battery"));
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("System"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("About"));
 }
 
 void test_header_time_updates_outside_launcher() {
@@ -1569,30 +1582,81 @@ void test_settings_masked_password_and_timezone_directory() {
     TEST_ASSERT_EQUAL_STRING("sexxxxxxxxxxxxxxxxxxxxxxxxxxxx", radio.last_password);
     TEST_ASSERT_TRUE(display.hasText("Connecting"));
     TEST_ASSERT_FALSE(display.hasText("**"));
+}
 
-    input.push(makeAction(InputAction::Back));
+void test_time_zone_sections_sort_and_utc_labels() {
+    TEST_ASSERT_EQUAL_INT(5, luma::timeZoneSectionCount());
+    TEST_ASSERT_EQUAL_STRING("UTC", luma::timeZoneSectionLabelAt(0));
+    TEST_ASSERT_EQUAL_STRING("America", luma::timeZoneSectionLabelAt(1));
+    TEST_ASSERT_EQUAL_STRING("Europe", luma::timeZoneSectionLabelAt(2));
+    TEST_ASSERT_EQUAL_STRING("Asia", luma::timeZoneSectionLabelAt(3));
+    TEST_ASSERT_EQUAL_STRING("Australia", luma::timeZoneSectionLabelAt(4));
+    TEST_ASSERT_EQUAL_INT(0, luma::timeZoneSectionOf("UTC"));
+    TEST_ASSERT_EQUAL_INT(3, luma::timeZoneSectionOf("Asia/Shanghai"));
+    TEST_ASSERT_EQUAL_STRING("America/Los_Angeles", luma::timeZoneIdInSection(1, 0));
+    TEST_ASSERT_EQUAL_STRING("America/New_York", luma::timeZoneIdInSection(1, 3));
+    TEST_ASSERT_EQUAL_STRING("Asia/Kolkata", luma::timeZoneIdInSection(3, 0));
+    TEST_ASSERT_EQUAL_STRING("Asia/Shanghai", luma::timeZoneIdInSection(3, 1));
+    TEST_ASSERT_EQUAL_STRING("Asia/Singapore", luma::timeZoneIdInSection(3, 2));
+    TEST_ASSERT_EQUAL_STRING("Asia/Tokyo", luma::timeZoneIdInSection(3, 3));
+
+    char label[12] = {};
+    luma::formatTimeZoneUtcLabel("Asia/Kolkata", label, sizeof(label));
+    TEST_ASSERT_EQUAL_STRING("UTC+5:30", label);
+    luma::formatTimeZoneUtcLabel("America/Los_Angeles", label, sizeof(label));
+    TEST_ASSERT_EQUAL_STRING("UTC-8", label);
+    luma::formatTimeZoneUtcLabel("UTC", label, sizeof(label));
+    TEST_ASSERT_EQUAL_STRING("UTC+0", label);
+}
+
+void test_settings_time_category_timezone_directory() {
+    luma::InMemoryStorage storage;
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    network.attach(radio, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
     luma.update();
-    input.push(makeAction(InputAction::Back));
+    for (int i = 0; i < 3; ++i) {
+        input.push(makeAction(InputAction::Down));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("Time"));
+    TEST_ASSERT_TRUE(display.hasText("Time zone"));
+    TEST_ASSERT_TRUE(display.hasText("UTC"));
+    TEST_ASSERT_FALSE(display.hasText("Wi-Fi"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("UTC"));
+    TEST_ASSERT_TRUE(display.hasText("America"));
+    TEST_ASSERT_TRUE(display.hasText("UTC+0"));
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Down));
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasText("UTC"));
-    TEST_ASSERT_TRUE(display.hasText("Asia/Shanghai"));
-    bool has_scrollbar = false;
-    for (const auto& fill : display.fills) {
-        if (fill.rect.w == 2) {
-            has_scrollbar = true;
-            break;
-        }
-    }
-    TEST_ASSERT_TRUE(has_scrollbar);
+    TEST_ASSERT_TRUE(display.hasText("Asia/Kolkata"));
     input.push(makeAction(InputAction::Down));
     luma.update();
     input.push(makeAction(InputAction::Confirm));
     luma.update();
     TEST_ASSERT_EQUAL_STRING("Asia/Shanghai", clock.timeZoneId());
+    TEST_ASSERT_TRUE(display.hasText("Time zone"));
+    TEST_ASSERT_TRUE(display.hasText("Asia/Shanghai"));
 }
 
 void test_header_network_glyphs_use_icons_not_spectrum_colors() {
@@ -1981,6 +2045,8 @@ int main() {
     RUN_TEST(test_settings_wifi_scan_and_open_network);
     RUN_TEST(test_settings_wifi_lists_zh_hans_ssid);
     RUN_TEST(test_settings_masked_password_and_timezone_directory);
+    RUN_TEST(test_time_zone_sections_sort_and_utc_labels);
+    RUN_TEST(test_settings_time_category_timezone_directory);
     RUN_TEST(test_settings_wifi_nested_split_and_scan_scroll);
     RUN_TEST(test_settings_wifi_password_back_keeps_ssid);
     RUN_TEST(test_settings_wifi_saved_reconnect_skips_password);

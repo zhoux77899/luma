@@ -25,9 +25,10 @@ enum Category : int {
     kDisplay = 0,
     kSound = 1,
     kNetwork = 2,
-    kPower = 3,
-    kSystem = 4,
-    kCategoryCount = 5
+    kTime = 3,
+    kPower = 4,
+    kSystem = 5,
+    kCategoryCount = 6
 };
 
 constexpr int kCategoryPaneWidth = 88;
@@ -40,7 +41,9 @@ constexpr int kBarHeight = 4;
 constexpr int kBarCardHeight = 22;
 constexpr int kCardPad = 3;
 
-const char* kCategoryLabels[kCategoryCount] = {"Display", "Sound", "Network", "Power", "System"};
+const char* kCategoryLabels[kCategoryCount] = {"Display", "Sound", "Network", "Time", "Power",
+                                              "System"};
+constexpr int kCategoryVisible = 5;
 
 constexpr int kWifiSectionCount = 3;
 const char* kWifiSectionLabels[kWifiSectionCount] = {"Status", "Saved", "Scan"};
@@ -205,6 +208,8 @@ void SettingsApp::onEnter(AppContext& context) {
     category_ = kDisplay;
     detail_ = 0;
     editor_index_ = 0;
+    tz_section_ = 0;
+    tz_index_ = 0;
     password_len_ = 0;
     password_[0] = '\0';
     pending_ssid_[0] = '\0';
@@ -226,7 +231,7 @@ void SettingsApp::applyImmediate() {
 }
 
 int SettingsApp::detailCount() const {
-    if (category_ == kDisplay || category_ == kNetwork) {
+    if (category_ == kDisplay) {
         return 2;
     }
     return 1;
@@ -242,7 +247,7 @@ bool SettingsApp::isAbout() const { return category_ == kSystem && detail_ == 0;
 
 bool SettingsApp::isWifi() const { return category_ == kNetwork && detail_ == 0; }
 
-bool SettingsApp::isTimeZone() const { return category_ == kNetwork && detail_ == 1; }
+bool SettingsApp::isTimeZone() const { return category_ == kTime && detail_ == 0; }
 
 const char* SettingsApp::networkStateLabel() const {
     if (context_ == nullptr) {
@@ -507,26 +512,69 @@ void SettingsApp::updatePasswordEditor(const InputFrame& input) {
     }
 }
 
+void SettingsApp::enterTimeZoneEditor() {
+    editor_ = Editor::TimeZone;
+    pane_ = Pane::Category;
+    const char* current = context_->clock().timeZoneId();
+    tz_section_ = timeZoneSectionOf(current);
+    tz_index_ = 0;
+    const int count = timeZoneCountInSection(tz_section_);
+    for (int i = 0; i < count; ++i) {
+        if (std::strcmp(timeZoneIdInSection(tz_section_, i), current) == 0) {
+            tz_index_ = i;
+            break;
+        }
+    }
+}
+
 void SettingsApp::updateTimeZoneEditor(const InputFrame& input) {
     if (input.action == InputAction::Back) {
-        editor_ = Editor::None;
+        if (pane_ == Pane::Detail) {
+            pane_ = Pane::Category;
+        } else {
+            editor_ = Editor::None;
+            pane_ = Pane::Detail;
+        }
         context_->consumeBack();
         context_->requestRedraw();
         return;
     }
+
+    if (pane_ == Pane::Category) {
+        if (input.action == InputAction::Up && tz_section_ > 0) {
+            --tz_section_;
+            tz_index_ = 0;
+            context_->requestRedraw();
+            return;
+        }
+        if (input.action == InputAction::Down && tz_section_ + 1 < timeZoneSectionCount()) {
+            ++tz_section_;
+            tz_index_ = 0;
+            context_->requestRedraw();
+            return;
+        }
+        if (input.action == InputAction::Confirm) {
+            pane_ = Pane::Detail;
+            context_->requestRedraw();
+        }
+        return;
+    }
+
+    const int count = timeZoneCountInSection(tz_section_);
     if (input.action == InputAction::Up && tz_index_ > 0) {
         --tz_index_;
         context_->requestRedraw();
         return;
     }
-    if (input.action == InputAction::Down && tz_index_ + 1 < timeZoneCount()) {
+    if (input.action == InputAction::Down && tz_index_ + 1 < count) {
         ++tz_index_;
         context_->requestRedraw();
         return;
     }
-    if (input.action == InputAction::Confirm) {
-        context_->clock().setTimeZone(timeZoneIdAt(tz_index_));
+    if (input.action == InputAction::Confirm && count > 0) {
+        context_->clock().setTimeZone(timeZoneIdInSection(tz_section_, tz_index_));
         editor_ = Editor::None;
+        pane_ = Pane::Detail;
         context_->requestRedraw();
     }
 }
@@ -600,15 +648,7 @@ void SettingsApp::updateSplitPane(const InputFrame& input) {
             return;
         }
         if (isTimeZone()) {
-            editor_ = Editor::TimeZone;
-            tz_index_ = 0;
-            const char* current = context_->clock().timeZoneId();
-            for (int i = 0; i < timeZoneCount(); ++i) {
-                if (std::strcmp(timeZoneIdAt(i), current) == 0) {
-                    tz_index_ = i;
-                    break;
-                }
-            }
+            enterTimeZoneEditor();
             context_->requestRedraw();
         }
     }
@@ -654,13 +694,13 @@ void SettingsApp::detailLabelValue(int index, const char*& label, const char*& v
         return;
     }
     if (category_ == kNetwork) {
-        if (index == 0) {
-            label = "Wi-Fi";
-            value = wifi;
-        } else {
-            label = "Time zone";
-            value = zone;
-        }
+        label = "Wi-Fi";
+        value = wifi;
+        return;
+    }
+    if (category_ == kTime) {
+        label = "Time zone";
+        value = zone;
         return;
     }
     if (category_ == kPower) {
@@ -685,12 +725,22 @@ void SettingsApp::drawSplitPane() {
     renderer.surface().fillRoundRect(outer, layout::kCardRadius, palette.card);
 
     const int inner_x = left_x + kOuterPad;
-    const int inner_w = kCategoryPaneWidth - 2 * kOuterPad;
+    const int start = listWindowStart(category_, kCategoryCount, kCategoryVisible);
+    const bool overflow = kCategoryCount > kCategoryVisible;
+    if (overflow) {
+        drawOverflowScrollbar(renderer.surface(), palette,
+                              {left_x + kCategoryPaneWidth - kOuterPad - kScrollbarWidth,
+                               outer_y + kOuterPad, kScrollbarWidth, outer_h - 2 * kOuterPad},
+                              kCategoryCount, start, kCategoryVisible);
+    }
+    const int inner_w =
+        kCategoryPaneWidth - 2 * kOuterPad - (overflow ? kScrollbarWidth + 2 : 0);
     const int inner_y0 = outer_y + kOuterPad;
-    for (int i = 0; i < kCategoryCount; ++i) {
+    for (int i = 0; i < kCategoryVisible && start + i < kCategoryCount; ++i) {
+        const int index = start + i;
         const Rect card{inner_x, inner_y0 + i * (kInnerCardHeight + kInnerCardGap), inner_w,
                         kInnerCardHeight};
-        const bool selected = i == category_;
+        const bool selected = index == category_;
         const bool focused = pane_ == Pane::Category;
         if (selected && focused) {
             renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.accent);
@@ -704,7 +754,7 @@ void SettingsApp::drawSplitPane() {
                                ? palette.canvas
                                : (selected ? palette.primary_text : palette.secondary_text);
         renderer.surface().drawText({card.x + 4, centeredTextY(card.y, card.h)}, {text, 1},
-                                    kCategoryLabels[i]);
+                                    kCategoryLabels[index]);
     }
 
     const int right_x = left_x + kCategoryPaneWidth + kPaneGap;
@@ -951,26 +1001,65 @@ void SettingsApp::drawTimeZoneEditor() {
     renderer.clearAppCanvas();
     drawStandardHeader(*context_, renderer, name());
 
-    const int count = timeZoneCount();
+    const int left_x = layout::kChromeInset;
+    const int outer_y = layout::kContentBoth.y + 2;
+    const int outer_h = layout::kContentBoth.h - 4;
+    const Rect left_outer{left_x, outer_y, kCategoryPaneWidth, outer_h};
+    renderer.surface().fillRoundRect(left_outer, layout::kCardRadius, palette.card);
+
+    const int inner_x = left_x + kOuterPad;
+    const int inner_w = kCategoryPaneWidth - 2 * kOuterPad;
+    const int inner_y0 = outer_y + kOuterPad;
+    const bool left_focused = pane_ == Pane::Category;
+    const int sections = timeZoneSectionCount();
+    for (int i = 0; i < sections; ++i) {
+        const Rect card{inner_x, inner_y0 + i * (kInnerCardHeight + kInnerCardGap), inner_w,
+                        kInnerCardHeight};
+        const bool selected = i == tz_section_;
+        if (selected && left_focused) {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.accent);
+        } else {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.canvas);
+            if (selected) {
+                renderer.surface().drawRoundRect(card, layout::kCardRadius, palette.accent);
+            }
+        }
+        const Color text = selected && left_focused
+                               ? palette.canvas
+                               : (selected ? palette.primary_text : palette.secondary_text);
+        renderer.surface().drawText({card.x + 4, centeredTextY(card.y, card.h)}, {text, 1},
+                                    timeZoneSectionLabelAt(i));
+    }
+
+    const int right_x = left_x + kCategoryPaneWidth + kPaneGap;
+    const int right_w = layout::kWidth - layout::kChromeInset - right_x;
+    const Rect right_outer{right_x, outer_y, right_w, outer_h};
+    renderer.surface().fillRoundRect(right_outer, layout::kCardRadius, palette.card);
+
+    const int detail_x = right_x + kOuterPad;
+    const int detail_w = right_w - 2 * kOuterPad;
+    int row_y = outer_y + kOuterPad;
+    const bool right_focused = pane_ == Pane::Detail;
+    const int count = timeZoneCountInSection(tz_section_);
     const int start = listWindowStart(tz_index_, count, kListVisible);
-    int row_y = layout::kContentBoth.y + 2;
-    const int row_w = layout::kWidth - 2 * layout::kChromeInset;
     if (count > kListVisible) {
         drawOverflowScrollbar(renderer.surface(), palette,
-                              {layout::kWidth - layout::kChromeInset - kScrollbarWidth, row_y,
-                               kScrollbarWidth, kListVisible * (kRowBoxHeight + kInnerCardGap) - kInnerCardGap},
+                              {right_outer.x + right_outer.w - kOuterPad - kScrollbarWidth,
+                               outer_y + kOuterPad, kScrollbarWidth, outer_h - 2 * kOuterPad},
                               count, start, kListVisible);
     }
-    const int list_w = count > kListVisible ? row_w - kScrollbarWidth - 2 : row_w;
+    const int row_w = count > kListVisible ? detail_w - kScrollbarWidth - 2 : detail_w;
     for (int i = 0; i < kListVisible && start + i < count; ++i) {
         const int index = start + i;
-        const Rect row{layout::kChromeInset, row_y, list_w, kRowBoxHeight};
-        drawEditorRow(renderer.surface(), palette, row, timeZoneIdAt(index), nullptr,
-                      index == tz_index_);
+        const Rect row{detail_x, row_y, row_w, kRowBoxHeight};
+        char utc[12] = {};
+        formatTimeZoneUtcLabel(timeZoneIdInSection(tz_section_, index), utc, sizeof(utc));
+        drawEditorRow(renderer.surface(), palette, row, timeZoneIdInSection(tz_section_, index), utc,
+                      right_focused && index == tz_index_);
         row_y += kRowBoxHeight + kInnerCardGap;
     }
 
-    const KeyHint hints[] = {{"Ent", "set"}, {"Esc", "back"}};
+    const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
     drawStandardFooter(renderer, hints, 2);
     renderer.endFrame();
 }

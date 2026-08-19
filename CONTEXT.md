@@ -41,9 +41,17 @@ _Avoid_: splash App, boot App, home splash
 The service that provides frame time and local civil time. Civil time stays invalid until the Clock is synchronized; a temporary disconnect keeps the last valid civil time.
 _Avoid_: RTC, wall clock service, timer, NTP service
 
+**Time**:
+The Settings category for civil-time preferences. It is not the Clock service.
+_Avoid_: Clock (as a Settings category), Time zone (as a category name)
+
 **Time zone**:
-The persisted IANA civil-time selection the Clock applies. The Network category is where the user edits it.
+The persisted IANA civil-time selection the Clock applies. The Time category is where the user edits it.
 _Avoid_: TZ env, POSIX string, offset setting
+
+**Time zone section**:
+One of UTC, America, Europe, Asia, or Australia in the Time nested split of the Settings App.
+_Avoid_: Settings category, continent, tab
 
 **Network**:
 The Core service that owns Wi-Fi station connectivity, profiles, scan, and reconnect. It is not the Settings category of the same name. A user Disconnect holds reconnect until the next connect or reboot.
@@ -101,7 +109,7 @@ _Avoid_: Theme preference, palette name as a product setting
 The App that edits Settings. It uses a category pane and a detail pane.
 
 **Settings category**:
-One of Display, Sound, Network, Power, or System in the Settings App.
+One of Display, Sound, Network, Time, Power, or System in the Settings App.
 _Avoid_: tab, menu group
 
 **Category pane**:

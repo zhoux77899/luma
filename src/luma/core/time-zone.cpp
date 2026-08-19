@@ -1,5 +1,6 @@
 #include "luma/core/time-zone.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace luma {
@@ -200,6 +201,104 @@ const char* matchTimeZoneId(int32_t offset_east_sec, int64_t unix_utc) {
         }
     }
     return kDefaultTimeZoneId;
+}
+
+namespace {
+
+constexpr const char* kSectionLabels[kTimeZoneSectionCount] = {
+    "UTC", "America", "Europe", "Asia", "Australia"};
+
+bool idBelongsToSection(const char* id, const char* section) {
+    if (id == nullptr || section == nullptr) {
+        return false;
+    }
+    if (std::strcmp(section, "UTC") == 0) {
+        return std::strchr(id, '/') == nullptr;
+    }
+    const size_t n = std::strlen(section);
+    return std::strncmp(id, section, n) == 0 && id[n] == '/';
+}
+
+void collectSection(int section, int* out, int& count) {
+    count = 0;
+    if (section < 0 || section >= kTimeZoneSectionCount || out == nullptr) {
+        return;
+    }
+    const char* label = kSectionLabels[section];
+    for (int i = 0; i < kTimeZoneCount; ++i) {
+        if (idBelongsToSection(kZones[i].id, label)) {
+            out[count++] = i;
+        }
+    }
+    for (int i = 1; i < count; ++i) {
+        const int key = out[i];
+        int j = i - 1;
+        while (j >= 0 &&
+               (kZones[out[j]].std_east_sec > kZones[key].std_east_sec ||
+                (kZones[out[j]].std_east_sec == kZones[key].std_east_sec &&
+                 std::strcmp(kZones[out[j]].id, kZones[key].id) > 0))) {
+            out[j + 1] = out[j];
+            --j;
+        }
+        out[j + 1] = key;
+    }
+}
+
+}  // namespace
+
+int timeZoneSectionCount() { return kTimeZoneSectionCount; }
+
+const char* timeZoneSectionLabelAt(int section) {
+    if (section < 0 || section >= kTimeZoneSectionCount) {
+        return kSectionLabels[0];
+    }
+    return kSectionLabels[section];
+}
+
+int timeZoneCountInSection(int section) {
+    int ids[kTimeZoneCount] = {};
+    int count = 0;
+    collectSection(section, ids, count);
+    return count;
+}
+
+const char* timeZoneIdInSection(int section, int index) {
+    int ids[kTimeZoneCount] = {};
+    int count = 0;
+    collectSection(section, ids, count);
+    if (index < 0 || index >= count) {
+        return kDefaultTimeZoneId;
+    }
+    return kZones[ids[index]].id;
+}
+
+int timeZoneSectionOf(const char* id) {
+    const char* canonical = canonicalTimeZoneId(id);
+    for (int section = 0; section < kTimeZoneSectionCount; ++section) {
+        if (idBelongsToSection(canonical, kSectionLabels[section])) {
+            return section;
+        }
+    }
+    return 0;
+}
+
+void formatTimeZoneUtcLabel(const char* id, char* buf, size_t n) {
+    if (buf == nullptr || n == 0) {
+        return;
+    }
+    const ZoneRule* zone = findZone(id);
+    int32_t sec = zone->std_east_sec;
+    const char sign = sec < 0 ? '-' : '+';
+    if (sec < 0) {
+        sec = -sec;
+    }
+    const int hours = static_cast<int>(sec / 3600);
+    const int minutes = static_cast<int>((sec % 3600) / 60);
+    if (minutes == 0) {
+        std::snprintf(buf, n, "UTC%c%d", sign, hours);
+    } else {
+        std::snprintf(buf, n, "UTC%c%d:%02d", sign, hours, minutes);
+    }
 }
 
 }  // namespace luma
