@@ -129,8 +129,12 @@ One minute's Battery reading: percentage, voltage, charging, validity, and time.
 _Avoid_: telemetry point, log entry
 
 **Battery history**:
-The rolling 60-sample, one-hour window Battery keeps while Luma runs. A new run after startup is a gap.
+The rolling 60-sample, one-hour window Battery keeps while Luma runs. A new run after startup is a gap. The Settings chart is right-aligned to now; empty slots on the left are minutes not yet sampled.
 _Avoid_: sparkline, power log
+
+**Battery history chart**:
+The Settings Battery pane's one-hour bar chart. Percent gridlines mark 0, 50, and 100 without a vertical axis. Elapsed-minute labels mark -60, -30, and 0.
+_Avoid_: sparkline, Y-axis
 
 **Category pane**:
 The left list of Settings categories.

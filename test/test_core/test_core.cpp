@@ -2082,11 +2082,18 @@ void test_battery_history_bars_mark_bands_and_gaps() {
     samples[1].reading.percent = 50;
     samples[1].reading.percent_valid = true;
     samples[1].run_id = 2;
-    luma::drawBatteryHistory(display, palette, {0, 0, 120, 40}, samples, 2);
-    TEST_ASSERT_TRUE(display.hasFill({0, 36, 1, 4}, luma::theme::kBenihi));
-    TEST_ASSERT_TRUE(display.hasFill({4, 20, 1, 20}, luma::theme::kWakatake));
-    TEST_ASSERT_FALSE(display.hasFill({1, 36, 1, 4}, luma::theme::kBenihi));
-    TEST_ASSERT_FALSE(display.hasFill({2, 36, 1, 4}, luma::theme::kBenihi));
+    luma::drawBatteryHistory(display, palette, {0, 0, 120, 62}, samples, 2);
+    TEST_ASSERT_TRUE(display.hasFill({0, 0, 120, 1}, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasFill({0, 25, 120, 1}, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasFill({0, 49, 120, 1}, palette.secondary_text));
+    TEST_ASSERT_TRUE(display.hasFill({114, 45, 1, 5}, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasFill({118, 25, 1, 25}, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasFill({0, 45, 1, 5}, luma::theme::kBenihi));
+    TEST_ASSERT_FALSE(display.hasFill({1, 45, 1, 5}, luma::theme::kBenihi));
+    TEST_ASSERT_FALSE(display.hasFill({2, 45, 1, 5}, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasText("-60"));
+    TEST_ASSERT_TRUE(display.hasText("-30"));
+    TEST_ASSERT_TRUE(display.hasText("0"));
 }
 
 void test_settings_battery_pane_shows_reading() {
