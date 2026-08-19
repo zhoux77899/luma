@@ -137,9 +137,10 @@ uint8_t Luma::headerNetworkKey() const {
 uint8_t Luma::headerBatteryKey() const {
     const BatteryReading reading = battery_.current();
     const unsigned fill = batteryFillLevel(reading);
-    const unsigned charging = (reading.charging_valid && reading.charging) ? 1u : 0u;
+    const unsigned band =
+        reading.percent_valid ? static_cast<unsigned>(batteryBand(reading.percent)) : 0u;
     const unsigned unknown = reading.percent_valid ? 0u : 1u;
-    return static_cast<uint8_t>((unknown << 6) | (charging << 5) | fill);
+    return static_cast<uint8_t>((unknown << 6) | (band << 3) | fill);
 }
 
 void Luma::requestHeaderRedraw() {

@@ -20,6 +20,35 @@ struct BatterySample {
     uint8_t run_id = 0;
 };
 
+inline uint8_t batteryPercentFromVoltageMv(uint16_t mv) {
+    constexpr int kEmptyMv = 3300;
+    constexpr int kSpanMv = 4150 - 3350;
+    if (static_cast<int>(mv) <= kEmptyMv) {
+        return 0;
+    }
+    const int level = (static_cast<int>(mv) - kEmptyMv) * 100 / kSpanMv;
+    if (level >= 100) {
+        return 100;
+    }
+    return static_cast<uint8_t>(level);
+}
+
+enum class BatteryBand : uint8_t {
+    Critical = 0,
+    Warn = 1,
+    Ok = 2,
+};
+
+inline BatteryBand batteryBand(uint8_t percent) {
+    if (percent <= 20) {
+        return BatteryBand::Critical;
+    }
+    if (percent <= 30) {
+        return BatteryBand::Warn;
+    }
+    return BatteryBand::Ok;
+}
+
 inline uint8_t batteryFillLevel(const BatteryReading& reading) {
     if (!reading.percent_valid || reading.percent == 0) {
         return 0;

@@ -68,11 +68,9 @@ void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point
 
 void drawBatteryGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
                       const BatteryReading& reading) {
-    Color color = palette.primary_text;
-    if (reading.charging_valid && reading.charging) {
-        color = theme::kWakatake;
-    } else if (!reading.percent_valid) {
-        color = palette.secondary_text;
+    Color color = palette.secondary_text;
+    if (reading.percent_valid) {
+        color = theme::batteryBandColor(batteryBand(reading.percent));
     }
     display.drawMonoBitmap(origin, assets::kBatteryIconSize, assets::kBatteryIconSize,
                            assets::kBatteryOutline, color);
@@ -91,8 +89,10 @@ void drawBatteryHistory(DisplaySurface& display, const theme::Palette& palette, 
         return;
     }
     constexpr int kSlots = 60;
-    constexpr int kBarWidth = 2;
-    const int chart_w = kSlots * kBarWidth;
+    constexpr int kBarWidth = 1;
+    constexpr int kBarGap = 1;
+    constexpr int kStride = kBarWidth + kBarGap;
+    const int chart_w = kSlots * kStride;
     int origin_x = bounds.x;
     if (bounds.w > chart_w) {
         origin_x += (bounds.w - chart_w) / 2;
@@ -114,10 +114,9 @@ void drawBatteryHistory(DisplaySurface& display, const theme::Palette& palette, 
             if (height > bounds.h) {
                 height = bounds.h;
             }
-            const Color color =
-                (reading.charging_valid && reading.charging) ? theme::kWakatake : palette.primary_text;
-            display.fillRect({origin_x + slot * kBarWidth, bounds.y + bounds.h - height, kBarWidth, height},
-                             color);
+            const Color color = theme::batteryBandColor(batteryBand(reading.percent));
+            display.fillRect(
+                {origin_x + slot * kStride, bounds.y + bounds.h - height, kBarWidth, height}, color);
         }
         ++slot;
     }

@@ -776,10 +776,6 @@ void SettingsApp::drawSplitPane() {
         if (reading.percent_valid) {
             std::snprintf(percent, sizeof(percent), "%u%%", static_cast<unsigned>(reading.percent));
         }
-        const char* state = "--";
-        if (reading.charging_valid) {
-            state = reading.charging ? "Charging" : "Not charging";
-        }
         char volts[12] = "--";
         if (reading.voltage_valid) {
             std::snprintf(volts, sizeof(volts), "%u.%02u V",
@@ -788,11 +784,8 @@ void SettingsApp::drawSplitPane() {
         }
         renderer.surface().drawText({detail_x + 4, centeredTextY(row_y, kRowBoxHeight)},
                                     {palette.primary_text, 1}, percent);
-        const int state_x = detail_x + detail_w - 4 - font::textWidth(state, 1);
-        renderer.surface().drawText({state_x, centeredTextY(row_y, kRowBoxHeight)},
-                                    {palette.secondary_text, 1}, state);
-        row_y += kRowBoxHeight + kInnerCardGap;
-        renderer.surface().drawText({detail_x + 4, centeredTextY(row_y, kRowBoxHeight)},
+        const int volts_x = detail_x + detail_w - 4 - font::textWidth(volts, 1);
+        renderer.surface().drawText({volts_x, centeredTextY(row_y, kRowBoxHeight)},
                                     {palette.secondary_text, 1}, volts);
         row_y += kRowBoxHeight + kInnerCardGap;
         const int chart_bottom = outer_y + outer_h - kOuterPad;

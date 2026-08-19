@@ -1,5 +1,6 @@
 #pragma once
 
+#include "luma/core/battery-types.h"
 #include "luma/core/display.h"
 
 namespace luma {
@@ -34,6 +35,16 @@ struct Palette {
     Color accent;
     Color card;
 };
+
+inline Color batteryBandColor(BatteryBand band) {
+    if (band == BatteryBand::Critical) {
+        return kBenihi;
+    }
+    if (band == BatteryBand::Warn) {
+        return kYamabuki;
+    }
+    return kWakatake;
+}
 
 inline Palette paletteFor(uint8_t theme_pref, Color accent = kAccent) {
     if (theme_pref == 1) {

@@ -2020,25 +2020,30 @@ void test_header_time_and_title_do_not_clip() {
     TEST_ASSERT_TRUE(battery);
 }
 
-void test_battery_glyph_fill_and_charging_color() {
+void test_battery_glyph_fill_and_band_color() {
     FakeDisplay display;
     const auto palette = luma::theme::paletteFor(0);
     luma::BatteryReading reading;
     reading.percent = 50;
     reading.percent_valid = true;
     luma::drawBatteryGlyph(display, palette, {0, 0}, reading);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, palette.primary_text));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, palette.primary_text));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, palette.primary_text));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill3, palette.primary_text));
-    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill4, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, luma::theme::kWakatake));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, luma::theme::kWakatake));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, luma::theme::kWakatake));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill3, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill4, luma::theme::kWakatake));
 
     display.beginFrame();
-    reading.charging = true;
-    reading.charging_valid = true;
+    reading.percent = 25;
     luma::drawBatteryGlyph(display, palette, {0, 0}, reading);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, luma::theme::kWakatake));
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill3, luma::theme::kWakatake));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, luma::theme::kYamabuki));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, luma::theme::kYamabuki));
+
+    display.beginFrame();
+    reading.percent = 10;
+    luma::drawBatteryGlyph(display, palette, {0, 0}, reading);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, luma::theme::kBenihi));
 }
 
 void test_header_redraws_when_battery_changes() {
@@ -2059,30 +2064,29 @@ void test_header_redraws_when_battery_changes() {
 
     luma.begin();
     enterLauncher(luma, clock);
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::paletteFor(0).primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::kWakatake));
 
     battery_source.reading.percent = 10;
     luma.update();
-    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, luma::theme::paletteFor(0).primary_text));
-    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::paletteFor(0).primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, luma::theme::kBenihi));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::kWakatake));
 }
 
-void test_battery_history_bars_mark_charging_and_gaps() {
+void test_battery_history_bars_mark_bands_and_gaps() {
     FakeDisplay display;
     const auto palette = luma::theme::paletteFor(0);
     luma::BatterySample samples[2] = {};
-    samples[0].reading.percent = 50;
+    samples[0].reading.percent = 10;
     samples[0].reading.percent_valid = true;
     samples[0].run_id = 1;
-    samples[1].reading.percent = 60;
+    samples[1].reading.percent = 50;
     samples[1].reading.percent_valid = true;
-    samples[1].reading.charging = true;
-    samples[1].reading.charging_valid = true;
     samples[1].run_id = 2;
     luma::drawBatteryHistory(display, palette, {0, 0, 120, 40}, samples, 2);
-    TEST_ASSERT_TRUE(display.hasFill({0, 20, 2, 20}, palette.primary_text));
-    TEST_ASSERT_TRUE(display.hasFill({4, 16, 2, 24}, luma::theme::kWakatake));
-    TEST_ASSERT_FALSE(display.hasFill({2, 20, 2, 20}, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasFill({0, 36, 1, 4}, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasFill({4, 20, 1, 20}, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasFill({1, 36, 1, 4}, luma::theme::kBenihi));
+    TEST_ASSERT_FALSE(display.hasFill({2, 36, 1, 4}, luma::theme::kBenihi));
 }
 
 void test_settings_battery_pane_shows_reading() {
@@ -2111,8 +2115,9 @@ void test_settings_battery_pane_shows_reading() {
     }
     TEST_ASSERT_TRUE(display.hasText("Battery"));
     TEST_ASSERT_TRUE(display.hasText("87%"));
-    TEST_ASSERT_TRUE(display.hasText("Not charging"));
     TEST_ASSERT_TRUE(display.hasText("4.12 V"));
+    TEST_ASSERT_FALSE(display.hasText("Charging"));
+    TEST_ASSERT_FALSE(display.hasText("Not charging"));
 }
 
 void test_signal_strength_from_rssi_bins() {
@@ -2204,6 +2209,50 @@ void test_settings_wifi_scan_icons_and_long_ssid() {
         }
     }
     TEST_ASSERT_TRUE(found_ellipsis);
+}
+
+void test_battery_band_from_percent() {
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Critical, luma::batteryBand(0));
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Critical, luma::batteryBand(20));
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Warn, luma::batteryBand(21));
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Warn, luma::batteryBand(30));
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Ok, luma::batteryBand(31));
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Ok, luma::batteryBand(100));
+}
+
+void test_header_redraws_when_battery_band_changes() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    battery_source.reading.percent = 25;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, luma::theme::kYamabuki));
+
+    battery_source.reading.percent = 35;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill2, luma::theme::kYamabuki));
+}
+
+void test_battery_percent_from_voltage_mv() {
+    TEST_ASSERT_EQUAL_UINT8(0, luma::batteryPercentFromVoltageMv(0));
+    TEST_ASSERT_EQUAL_UINT8(0, luma::batteryPercentFromVoltageMv(3300));
+    TEST_ASSERT_EQUAL_UINT8(100, luma::batteryPercentFromVoltageMv(4100));
+    TEST_ASSERT_EQUAL_UINT8(100, luma::batteryPercentFromVoltageMv(4150));
 }
 
 void test_battery_fill_levels_bucket_percent() {
@@ -2417,15 +2466,18 @@ int main() {
     RUN_TEST(test_settings_wifi_saved_reconnect_skips_password);
     RUN_TEST(test_header_network_glyphs_use_icons_not_spectrum_colors);
     RUN_TEST(test_header_time_and_title_do_not_clip);
-    RUN_TEST(test_battery_glyph_fill_and_charging_color);
+    RUN_TEST(test_battery_glyph_fill_and_band_color);
     RUN_TEST(test_header_redraws_when_battery_changes);
-    RUN_TEST(test_battery_history_bars_mark_charging_and_gaps);
+    RUN_TEST(test_header_redraws_when_battery_band_changes);
+    RUN_TEST(test_battery_history_bars_mark_bands_and_gaps);
     RUN_TEST(test_settings_battery_pane_shows_reading);
     RUN_TEST(test_signal_strength_from_rssi_bins);
     RUN_TEST(test_ellipsize_appends_ascii_dots);
     RUN_TEST(test_wifi_list_glyph_weakest_is_all_secondary);
     RUN_TEST(test_settings_wifi_status_signal_is_dbm_only);
     RUN_TEST(test_settings_wifi_scan_icons_and_long_ssid);
+    RUN_TEST(test_battery_band_from_percent);
+    RUN_TEST(test_battery_percent_from_voltage_mv);
     RUN_TEST(test_battery_fill_levels_bucket_percent);
     RUN_TEST(test_battery_samples_once_per_minute_and_rolls_over);
     RUN_TEST(test_battery_checkpoint_restores_and_new_run_is_a_gap);

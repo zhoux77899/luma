@@ -74,7 +74,7 @@ The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Ch
 _Avoid_: M5GFX Font0, system font, per-host typeface
 
 **Header status cluster**:
-The compact right-side Header region: a 10x10 network glyph beside a 10x10 battery glyph, civil time right-aligned beneath them. The battery glyph is six fill levels, not a numeric percentage.
+The compact right-side Header region: a 10x10 network glyph beside a 10x10 battery glyph, civil time right-aligned beneath them. The battery glyph is six fill levels, not a numeric percentage. Its color is the Battery band.
 _Avoid_: status bar, system tray, RSSI readout, Header battery percentage
 
 **Signal strength**:
@@ -113,8 +113,16 @@ One of Display, Sound, Network, Time, Battery, or System in the Settings App.
 _Avoid_: tab, menu group
 
 **Battery**:
-The Core service that reports charge, samples Battery history, and checkpoints it. It is not a Launcher App. The Settings category of the same name is the pane that shows current charge and the one-hour history.
+The Core service that reports charge, samples Battery history, and checkpoints it. It is not a Launcher App. The Settings category of the same name is the pane that shows current charge and the one-hour history. It does not show Charging.
 _Avoid_: Power (as a service or Settings category), Battery App
+
+**Charging**:
+A Battery reading the platform may not know. Luma does not display it. Cardputer ADV cannot report it.
+_Avoid_: USB connected, Power
+
+**Battery band**:
+One of three percent bands the Header battery glyph and Battery history chart share: 0–20 Benihi, 21–30 Yamabuki, 31–100 Wakatake. It is not the six-level Header fill.
+_Avoid_: fill level (for this), charging color, Battery range
 
 **Battery sample**:
 One minute's Battery reading: percentage, voltage, charging, validity, and time.
