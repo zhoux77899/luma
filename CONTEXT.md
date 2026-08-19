@@ -9,11 +9,11 @@ The firmware product that runs on Cardputer ADV, and the coordinator that boots 
 _Avoid_: OS, system, shell
 
 **Core**:
-The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, Audio, Clock, and Network contracts.
+The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, Audio, Clock, Network, and Battery contracts.
 _Avoid_: shell, OS, runtime
 
 **AppContext**:
-The service bag handed to an App on enter: display, Settings, Storage, Clock, Network, and redraw.
+The service bag handed to an App on enter: display, Settings, Storage, Clock, Network, Battery, and redraw.
 
 **AppManager**:
 The owner of the one current App and the static registry that routes enter, exit, Back, and shortcuts.
@@ -74,8 +74,8 @@ The shared bitmap face for all on-screen text. Latin stays narrow; Simplified Ch
 _Avoid_: M5GFX Font0, system font, per-host typeface
 
 **Header status cluster**:
-The compact right-side Header region that stacks a 10x10 network glyph above civil time, both right-aligned.
-_Avoid_: status bar, system tray, RSSI readout
+The compact right-side Header region: a 10x10 network glyph beside a 10x10 battery glyph, civil time right-aligned beneath them. The battery glyph is six fill levels, not a numeric percentage.
+_Avoid_: status bar, system tray, RSSI readout, Header battery percentage
 
 **Signal strength**:
 The four-level quantization of a radio. Header, Saved, and Scan share one 10x10 glyph: a 2x2 origin and two arcs when RSSI is known. Weakest paints every layer as secondary text. Non-connected Header states use the same 10x10 mark with a diagonal slash. Numeric dBm does not appear in the Header or in those rows. The Wi-Fi Status Signal row shows dBm without a level name.
@@ -109,8 +109,20 @@ _Avoid_: Theme preference, palette name as a product setting
 The App that edits Settings. It uses a category pane and a detail pane.
 
 **Settings category**:
-One of Display, Sound, Network, Time, Power, or System in the Settings App.
+One of Display, Sound, Network, Time, Battery, or System in the Settings App.
 _Avoid_: tab, menu group
+
+**Battery**:
+The Core service that reports charge, samples Battery history, and checkpoints it. It is not a Launcher App. The Settings category of the same name is the pane that shows current charge and the one-hour history.
+_Avoid_: Power (as a service or Settings category), Battery App
+
+**Battery sample**:
+One minute's Battery reading: percentage, voltage, charging, validity, and time.
+_Avoid_: telemetry point, log entry
+
+**Battery history**:
+The rolling 60-sample, one-hour window Battery keeps while Luma runs. A new run after startup is a gap.
+_Avoid_: sparkline, power log
 
 **Category pane**:
 The left list of Settings categories.

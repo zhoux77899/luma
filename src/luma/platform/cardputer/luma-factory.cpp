@@ -1,4 +1,5 @@
 #include "cardputer-audio-adapter.h"
+#include "cardputer-battery-source.h"
 #include "cardputer-clock.h"
 #include "cardputer-display-adapter.h"
 #include "cardputer-input-adapter.h"
@@ -6,6 +7,7 @@
 #include "nvs-littlefs-storage.h"
 #include "serial-diagnostics.h"
 
+#include "luma/core/battery.h"
 #include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
@@ -58,11 +60,22 @@ Network& network() {
     return instance;
 }
 
+CardputerBatterySource& batterySource() {
+    static CardputerBatterySource instance;
+    return instance;
+}
+
+Battery& battery() {
+    static Battery instance;
+    return instance;
+}
+
 }  // namespace
 
 Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics(), audio(),
-                    network()) {
+                    network(), battery()) {
     network().attach(radio(), storage(), diagnostics(), clock());
+    battery().attach(batterySource(), storage(), diagnostics(), clock());
 }
 
 }  // namespace luma

@@ -1,5 +1,6 @@
 #include "luma/ui/components.h"
 
+#include "luma/assets/battery-icons.h"
 #include "luma/assets/wifi-icons.h"
 #include "luma/ui/font.h"
 #include "luma/ui/layout.h"
@@ -65,6 +66,63 @@ void drawLockGlyph(DisplaySurface& display, const theme::Palette& palette, Point
                            locked ? assets::kLockClosed : assets::kLockOpen, palette.primary_text);
 }
 
+void drawBatteryGlyph(DisplaySurface& display, const theme::Palette& palette, Point origin,
+                      const BatteryReading& reading) {
+    Color color = palette.primary_text;
+    if (reading.charging_valid && reading.charging) {
+        color = theme::kWakatake;
+    } else if (!reading.percent_valid) {
+        color = palette.secondary_text;
+    }
+    display.drawMonoBitmap(origin, assets::kBatteryIconSize, assets::kBatteryIconSize,
+                           assets::kBatteryOutline, color);
+    const uint8_t fill = batteryFillLevel(reading);
+    const uint16_t* layers[] = {nullptr, assets::kBatteryFill1, assets::kBatteryFill2,
+                                assets::kBatteryFill3, assets::kBatteryFill4, assets::kBatteryFill5};
+    for (uint8_t i = 1; i <= fill && i <= 5; ++i) {
+        display.drawMonoBitmap(origin, assets::kBatteryIconSize, assets::kBatteryIconSize, layers[i],
+                               color);
+    }
+}
+
+void drawBatteryHistory(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                        const BatterySample* samples, int count) {
+    if (samples == nullptr || count <= 0 || bounds.w <= 0 || bounds.h <= 0) {
+        return;
+    }
+    constexpr int kSlots = 60;
+    constexpr int kBarWidth = 2;
+    const int chart_w = kSlots * kBarWidth;
+    int origin_x = bounds.x;
+    if (bounds.w > chart_w) {
+        origin_x += (bounds.w - chart_w) / 2;
+    }
+    int slot = 0;
+    for (int i = 0; i < count && slot < kSlots; ++i) {
+        if (i > 0 && batteryHistoryGap(samples[i - 1], samples[i]) && slot < kSlots) {
+            ++slot;
+        }
+        if (slot >= kSlots) {
+            break;
+        }
+        const BatteryReading& reading = samples[i].reading;
+        if (reading.percent_valid) {
+            int height = (bounds.h * static_cast<int>(reading.percent)) / 100;
+            if (height < 1) {
+                height = 1;
+            }
+            if (height > bounds.h) {
+                height = bounds.h;
+            }
+            const Color color =
+                (reading.charging_valid && reading.charging) ? theme::kWakatake : palette.primary_text;
+            display.fillRect({origin_x + slot * kBarWidth, bounds.y + bounds.h - height, kBarWidth, height},
+                             color);
+        }
+        ++slot;
+    }
+}
+
 void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width) {
     if (dst == nullptr || dst_size == 0) {
         return;
@@ -108,7 +166,7 @@ void ellipsizeToWidth(const char* src, char* dst, size_t dst_size, int max_width
 
 void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const uint16_t* logo,
                    const char* title, const char* time, NetworkState state,
-                   SignalStrength strength) {
+                   SignalStrength strength, const BatteryReading& battery) {
     display.fillRect(layout::kHeader, palette.canvas);
     if (logo != nullptr) {
         display.drawBitmap({layout::kHeaderLogoX, layout::kHeaderLogoY}, layout::kHeaderLogoSize,
@@ -122,9 +180,9 @@ void drawAppHeader(DisplaySurface& display, const theme::Palette& palette, const
     const int cluster_h =
         layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap + font::kGlyphHeight;
     const int cluster_y = (layout::kHeaderHeight - cluster_h) / 2;
-    const int icon_x = layout::kWidth - layout::kChromeInset - layout::kHeaderNetworkIconSize;
     const int time_x = layout::kWidth - layout::kChromeInset - font::textWidth(label, 1);
-    drawNetworkGlyph(display, palette, {icon_x, cluster_y}, state, strength);
+    drawNetworkGlyph(display, palette, {layout::kHeaderNetworkIconX, cluster_y}, state, strength);
+    drawBatteryGlyph(display, palette, {layout::kHeaderBatteryIconX, cluster_y}, battery);
     display.drawText({time_x, cluster_y + layout::kHeaderNetworkIconSize + layout::kHeaderStatusGap},
                      {palette.primary_text, 1}, label);
 }

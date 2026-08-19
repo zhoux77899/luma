@@ -95,4 +95,6 @@ CivilTime HostClockAdapter::localTime() const {
     return civilTimeAt(unixNow(), tz_ready_ ? tz_ : matchTimeZoneId(hostOffsetEastSec(), unixNow()));
 }
 
+int64_t HostClockAdapter::unixUtc() const { return unixNow(); }
+
 }  // namespace luma

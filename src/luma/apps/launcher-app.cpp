@@ -3,6 +3,7 @@
 #include "luma/assets/luma-logo-header.h"
 #include "luma/core/app-context.h"
 #include "luma/core/app-manager.h"
+#include "luma/core/battery.h"
 #include "luma/core/display.h"
 #include "luma/core/network.h"
 #include "luma/core/settings.h"
@@ -116,7 +117,8 @@ void LauncherApp::draw() {
     renderer.beginFrame();
     renderer.clearAppCanvas();
     drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label,
-                  context_->network().state(), context_->network().signalStrength());
+                  context_->network().state(), context_->network().signalStrength(),
+                  context_->battery().current());
     for (int i = 0; i < count; ++i) {
         drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], accents[i],
                     i == selected_);

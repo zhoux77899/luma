@@ -2,6 +2,8 @@
 
 #include "luma/assets/luma-logo-boot.h"
 #include "luma/core/audio.h"
+#include "luma/core/battery.h"
+#include "luma/core/battery-types.h"
 #include "luma/core/clock.h"
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
@@ -19,7 +21,8 @@ constexpr uint32_t kBootDurationMs = 1000;
 }  // namespace
 
 Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
-           Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network)
+           Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network,
+           Battery& battery)
     : display_(display),
       input_(input),
       clock_(clock),
@@ -28,7 +31,8 @@ Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& s
       diagnostics_(diagnostics),
       audio_(audio),
       network_(network),
-      context_(display, settings, storage, clock, diagnostics, network),
+      battery_(battery),
+      context_(display, settings, storage, clock, diagnostics, network, battery),
       input_manager_(input, diagnostics),
       app_manager_(context_, diagnostics),
       launcher_(app_manager_) {}
@@ -42,6 +46,8 @@ void Luma::begin() {
     clock_.attach(storage_, diagnostics_);
     network_.load();
     network_.begin();
+    battery_.load();
+    battery_.begin();
     display_.setBrightness(settings_.brightness());
     audio_.setVolume(settings_.volume());
     registerApp(launcher_);
@@ -59,6 +65,7 @@ void Luma::update() {
     input_manager_.poll(frame);
 
     network_.update();
+    battery_.update();
     if (network_.takeConnectedEdge()) {
         clock_.synchronize();
     }
@@ -114,6 +121,7 @@ void Luma::finishBoot() {
     const CivilTime time = clock_.localTime();
     last_header_minute_ = time.valid ? time.minute : 255;
     last_header_network_ = headerNetworkKey();
+    last_header_battery_ = headerBatteryKey();
     last_scan_key_ = static_cast<uint8_t>(
         (network_.scanInProgress() ? 0x80 : 0) | (network_.publicScanCount() & 0x7F));
     app_manager_.enter(AppManager::kLauncherId);
@@ -126,18 +134,28 @@ uint8_t Luma::headerNetworkKey() const {
         static_cast<unsigned>(network_.signalStrength()));
 }
 
+uint8_t Luma::headerBatteryKey() const {
+    const BatteryReading reading = battery_.current();
+    const unsigned fill = batteryFillLevel(reading);
+    const unsigned charging = (reading.charging_valid && reading.charging) ? 1u : 0u;
+    const unsigned unknown = reading.percent_valid ? 0u : 1u;
+    return static_cast<uint8_t>((unknown << 6) | (charging << 5) | fill);
+}
+
 void Luma::requestHeaderRedraw() {
     const CivilTime time = clock_.localTime();
     const uint8_t minute_key = time.valid ? time.minute : 255;
     const uint8_t network_key = headerNetworkKey();
+    const uint8_t battery_key = headerBatteryKey();
     const uint8_t scan_key = static_cast<uint8_t>(
         (network_.scanInProgress() ? 0x80 : 0) | (network_.publicScanCount() & 0x7F));
     if (minute_key == last_header_minute_ && network_key == last_header_network_ &&
-        scan_key == last_scan_key_) {
+        battery_key == last_header_battery_ && scan_key == last_scan_key_) {
         return;
     }
     last_header_minute_ = minute_key;
     last_header_network_ = network_key;
+    last_header_battery_ = battery_key;
     last_scan_key_ = scan_key;
     context_.requestRedraw();
 }

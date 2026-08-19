@@ -1,6 +1,8 @@
 #pragma once
 
 #include "luma/core/audio.h"
+#include "luma/core/battery.h"
+#include "luma/core/battery-source.h"
 #include "luma/core/clock.h"
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
@@ -173,6 +175,13 @@ public:
 
     uint32_t millis() const override { return now; }
 
+    int64_t unixUtc() const override {
+        if (use_unix) {
+            return synchronized ? unix_utc : 0;
+        }
+        return unix_utc;
+    }
+
     CivilTime localTime() const override {
         if (!use_unix) {
             return civil;
@@ -200,6 +209,22 @@ public:
     }
 
     const char* timeZoneId() const override { return tz; }
+};
+
+class FakeBatterySource : public BatterySource {
+public:
+    BatteryReading reading;
+
+    FakeBatterySource() {
+        reading.percent = 87;
+        reading.voltage_mv = 4120;
+        reading.charging = false;
+        reading.percent_valid = true;
+        reading.voltage_valid = true;
+        reading.charging_valid = true;
+    }
+
+    BatteryReading read() const override { return reading; }
 };
 
 class FakeWifiRadio : public WifiRadio {
@@ -394,12 +419,15 @@ struct LumaHarness {
     FakeDiagnostics diagnostics;
     FakeAudio audio;
     FakeWifiRadio radio;
+    FakeBatterySource battery_source;
     Network network;
+    Battery battery;
     Luma luma;
 
     LumaHarness()
-        : luma(display, input, clock, storage, settings, diagnostics, audio, network) {
+        : luma(display, input, clock, storage, settings, diagnostics, audio, network, battery) {
         network.attach(radio, storage, diagnostics, clock);
+        battery.attach(battery_source, storage, diagnostics, clock);
     }
 };
 

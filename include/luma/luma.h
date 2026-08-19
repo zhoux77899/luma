@@ -13,6 +13,7 @@
 namespace luma {
 
 class Audio;
+class Battery;
 class Clock;
 class Diagnostics;
 class DisplaySurface;
@@ -25,7 +26,8 @@ class Luma {
 public:
     Luma();
     Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
-         Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network);
+         Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network,
+         Battery& battery);
 
     void begin();
     void update();
@@ -41,6 +43,7 @@ private:
     void requestHeaderRedraw();
     void playUiSound(const char* event);
     uint8_t headerNetworkKey() const;
+    uint8_t headerBatteryKey() const;
 
     DisplaySurface& display_;
     InputSource& input_;
@@ -50,6 +53,7 @@ private:
     Diagnostics& diagnostics_;
     Audio& audio_;
     Network& network_;
+    Battery& battery_;
     AppContext context_;
     InputManager input_manager_;
     AppManager app_manager_;
@@ -61,6 +65,7 @@ private:
     uint32_t boot_started_ms_ = 0;
     uint8_t last_header_minute_ = 254;
     uint8_t last_header_network_ = 255;
+    uint8_t last_header_battery_ = 255;
     uint8_t last_scan_key_ = 255;
 };
 

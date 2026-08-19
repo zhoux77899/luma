@@ -10,6 +10,7 @@ class HostClockAdapter : public Clock {
 public:
     uint32_t millis() const override;
     CivilTime localTime() const override;
+    int64_t unixUtc() const override;
     void update() override;
     void synchronize() override;
     void attach(Storage& storage, Diagnostics& diagnostics) override;

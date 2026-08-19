@@ -9,9 +9,12 @@
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
 #include "luma/core/network.h"
+#include "luma/core/battery.h"
+#include "luma/core/battery-types.h"
 #include "luma/core/settings.h"
 #include "luma/core/time-zone.h"
 #include "luma/core/wifi-radio.h"
+#include "luma/assets/battery-icons.h"
 #include "luma/assets/wifi-icons.h"
 #include "luma/luma.h"
 #include "luma/platform/host/host-audio-adapter.h"
@@ -49,8 +52,10 @@ using luma::theme::kAccent;
 using luma::theme::kTsuyukusa;
 using luma::theme::kWakatake;
 using luma::theme::kYamabuki;
+using luma::test::ControllableStorage;
 using luma::test::CountingStorage;
 using luma::test::FakeAudio;
+using luma::test::FakeBatterySource;
 using luma::test::FakeClock;
 using luma::test::FakeDiagnostics;
 using luma::test::FakeDisplay;
@@ -80,6 +85,8 @@ struct AppManagerFixture {
     FakeDiagnostics diagnostics;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     AppContext context;
     AppManager manager;
     std::vector<std::string> log;
@@ -87,11 +94,12 @@ struct AppManagerFixture {
     RecordingApp about;
 
     AppManagerFixture()
-        : context(display, settings, storage, clock, diagnostics, network),
+        : context(display, settings, storage, clock, diagnostics, network, battery),
           manager(context, diagnostics),
           launcher("launcher", "Launcher", '\0', log),
           about("about", "About", 'a', log) {
         network.attach(radio, storage, diagnostics, clock);
+        battery.attach(battery_source, storage, diagnostics, clock);
         manager.registerApp({&launcher, launcher.id(), launcher.name(), launcher.shortcut()});
         manager.registerApp({&about, about.id(), about.name(), about.shortcut()});
     }
@@ -180,8 +188,11 @@ void test_luma_begin_shows_boot_screen() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
 
@@ -206,8 +217,11 @@ void test_luma_enters_launcher_after_boot_timeout() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -241,8 +255,11 @@ void test_luma_boot_skips_on_input() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     input.push(makeAction(InputAction::Confirm));
@@ -262,8 +279,11 @@ void test_luma_draws_only_when_dirty() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -282,8 +302,11 @@ void test_luma_processes_deferred_saves_each_update() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     TEST_ASSERT_EQUAL_INT(0, storage.flush_count);
@@ -305,8 +328,11 @@ void test_luma_routes_input_frame_to_app_manager() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.registerApp(extra);
     luma.begin();
@@ -327,8 +353,11 @@ void test_luma_letter_does_not_open_stub_app() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -348,8 +377,11 @@ void test_launcher_confirm_opens_settings() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -362,7 +394,7 @@ void test_launcher_confirm_opens_settings() {
     TEST_ASSERT_TRUE(display.hasText("Sound"));
     TEST_ASSERT_TRUE(display.hasText("Network"));
     TEST_ASSERT_TRUE(display.hasText("Time"));
-    TEST_ASSERT_TRUE(display.hasText("Power"));
+    TEST_ASSERT_TRUE(display.hasText("Battery"));
     TEST_ASSERT_FALSE(display.hasText("System"));
     TEST_ASSERT_TRUE(display.hasText("Brightness"));
     TEST_ASSERT_TRUE(display.hasText("80%"));
@@ -390,8 +422,11 @@ void test_stub_back_returns_to_launcher() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -415,8 +450,11 @@ void test_launcher_navigation_stays_in_bounds() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -449,8 +487,11 @@ void test_launcher_header_updates_when_minute_changes() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     clock.civil.hour = 10;
     clock.civil.minute = 0;
@@ -662,8 +703,11 @@ void test_settings_app_steps_brightness_and_applies() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -692,8 +736,11 @@ void test_settings_flush_on_exit_before_debounce() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -725,8 +772,11 @@ void test_settings_volume_zero_does_not_play_click() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -761,8 +811,11 @@ void test_settings_volume_steps_and_applies() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -823,8 +876,11 @@ void test_settings_opens_about_with_build_identity() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -863,8 +919,11 @@ void test_settings_category_left_right_does_not_change_brightness() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -890,8 +949,11 @@ void test_settings_detail_back_stays_in_settings() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -921,8 +983,11 @@ void test_settings_detail_up_down_stays_bounded() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -953,8 +1018,11 @@ void test_settings_placeholder_confirm_stays() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1010,8 +1078,11 @@ void test_header_time_updates_outside_launcher() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     clock.civil.hour = 10;
     clock.civil.minute = 0;
@@ -1051,8 +1122,11 @@ void test_notes_round_trips_multiline_text() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1085,8 +1159,11 @@ void test_notes_deletes_in_the_middle() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1118,8 +1195,11 @@ void test_notes_up_keeps_column() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1152,8 +1232,11 @@ void test_notes_rejects_overflow_and_shows_full() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1186,8 +1269,11 @@ void test_notes_failed_save_keeps_previous_and_memory() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/notes.txt", "keep", 4));
     luma.begin();
@@ -1219,8 +1305,11 @@ void test_notes_autosaves_after_idle() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1423,8 +1512,11 @@ void test_luma_syncs_clock_on_connected_edge() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     clock.use_unix = true;
     clock.unix_utc = 1772953200;
     clock.ntp_succeeds = true;
@@ -1448,8 +1540,11 @@ void test_luma_ntp_failure_keeps_clock_unset() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     clock.use_unix = true;
     clock.ntp_succeeds = false;
 
@@ -1494,8 +1589,11 @@ void test_settings_wifi_scan_and_open_network() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Open-Cafe", false, -70);
 
     luma.begin();
@@ -1525,8 +1623,11 @@ void test_settings_wifi_lists_zh_hans_ssid() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit(u8"家里的网", false, -70);
 
     luma.begin();
@@ -1548,8 +1649,11 @@ void test_settings_masked_password_and_timezone_directory() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Cafe", true, -50);
 
     luma.begin();
@@ -1619,8 +1723,11 @@ void test_settings_time_category_timezone_directory() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
     enterLauncher(luma, clock);
@@ -1755,8 +1862,11 @@ void test_settings_wifi_nested_split_and_scan_scroll() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Net0", false, -50);
     radio.addHit("Net1", false, -51);
     radio.addHit("Net2", false, -52);
@@ -1805,8 +1915,11 @@ void test_settings_wifi_password_back_keeps_ssid() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Cafe", true, -50);
 
     luma.begin();
@@ -1846,8 +1959,11 @@ void test_settings_wifi_saved_reconnect_skips_password() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Open-Cafe", false, -70);
 
     luma.begin();
@@ -1883,15 +1999,120 @@ void test_header_time_and_title_do_not_clip() {
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("--:--"));
     TEST_ASSERT_TRUE(display.hasMono(luma::assets::kWifiDisconnected, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, palette.secondary_text));
     bool stacked = false;
     for (const auto& mono : display.monos) {
-        if (mono.rows == luma::assets::kWifiDisconnected && mono.origin.x == 224 &&
+        if (mono.rows == luma::assets::kWifiDisconnected && mono.origin.x == 212 &&
             mono.origin.y == 5 && mono.width == 10 && mono.height == 10) {
             stacked = true;
             break;
         }
     }
     TEST_ASSERT_TRUE(stacked);
+    bool battery = false;
+    for (const auto& mono : display.monos) {
+        if (mono.rows == luma::assets::kBatteryOutline && mono.origin.x == 224 &&
+            mono.origin.y == 5 && mono.width == 10 && mono.height == 10) {
+            battery = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(battery);
+}
+
+void test_battery_glyph_fill_and_charging_color() {
+    FakeDisplay display;
+    const auto palette = luma::theme::paletteFor(0);
+    luma::BatteryReading reading;
+    reading.percent = 50;
+    reading.percent_valid = true;
+    luma::drawBatteryGlyph(display, palette, {0, 0}, reading);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill2, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill3, palette.primary_text));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill4, palette.primary_text));
+
+    display.beginFrame();
+    reading.charging = true;
+    reading.charging_valid = true;
+    luma::drawBatteryGlyph(display, palette, {0, 0}, reading);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryOutline, luma::theme::kWakatake));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill3, luma::theme::kWakatake));
+}
+
+void test_header_redraws_when_battery_changes() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::paletteFor(0).primary_text));
+
+    battery_source.reading.percent = 10;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill1, luma::theme::paletteFor(0).primary_text));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::paletteFor(0).primary_text));
+}
+
+void test_battery_history_bars_mark_charging_and_gaps() {
+    FakeDisplay display;
+    const auto palette = luma::theme::paletteFor(0);
+    luma::BatterySample samples[2] = {};
+    samples[0].reading.percent = 50;
+    samples[0].reading.percent_valid = true;
+    samples[0].run_id = 1;
+    samples[1].reading.percent = 60;
+    samples[1].reading.percent_valid = true;
+    samples[1].reading.charging = true;
+    samples[1].reading.charging_valid = true;
+    samples[1].run_id = 2;
+    luma::drawBatteryHistory(display, palette, {0, 0, 120, 40}, samples, 2);
+    TEST_ASSERT_TRUE(display.hasFill({0, 20, 2, 20}, palette.primary_text));
+    TEST_ASSERT_TRUE(display.hasFill({4, 16, 2, 24}, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasFill({2, 20, 2, 20}, palette.primary_text));
+}
+
+void test_settings_battery_pane_shows_reading() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    for (int i = 0; i < 4; ++i) {
+        input.push(makeAction(InputAction::Down));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("Battery"));
+    TEST_ASSERT_TRUE(display.hasText("87%"));
+    TEST_ASSERT_TRUE(display.hasText("Not charging"));
+    TEST_ASSERT_TRUE(display.hasText("4.12 V"));
 }
 
 void test_signal_strength_from_rssi_bins() {
@@ -1928,8 +2149,11 @@ void test_settings_wifi_status_signal_is_dbm_only() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("Open-Cafe", false, -40);
     radio.rssi_dbm = -42;
 
@@ -1956,8 +2180,11 @@ void test_settings_wifi_scan_icons_and_long_ssid() {
     FakeAudio audio;
     FakeWifiRadio radio;
     luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
     radio.addHit("ABCDEFGHIJKLMNOPQRSTUVWXYZ012345", true, -50);
 
     luma.begin();
@@ -1977,6 +2204,144 @@ void test_settings_wifi_scan_icons_and_long_ssid() {
         }
     }
     TEST_ASSERT_TRUE(found_ellipsis);
+}
+
+void test_battery_fill_levels_bucket_percent() {
+    luma::BatteryReading reading;
+    reading.percent_valid = true;
+    reading.percent = 0;
+    TEST_ASSERT_EQUAL_UINT8(0, luma::batteryFillLevel(reading));
+    reading.percent = 1;
+    TEST_ASSERT_EQUAL_UINT8(1, luma::batteryFillLevel(reading));
+    reading.percent = 20;
+    TEST_ASSERT_EQUAL_UINT8(1, luma::batteryFillLevel(reading));
+    reading.percent = 21;
+    TEST_ASSERT_EQUAL_UINT8(2, luma::batteryFillLevel(reading));
+    reading.percent = 40;
+    TEST_ASSERT_EQUAL_UINT8(2, luma::batteryFillLevel(reading));
+    reading.percent = 41;
+    TEST_ASSERT_EQUAL_UINT8(3, luma::batteryFillLevel(reading));
+    reading.percent = 60;
+    TEST_ASSERT_EQUAL_UINT8(3, luma::batteryFillLevel(reading));
+    reading.percent = 61;
+    TEST_ASSERT_EQUAL_UINT8(4, luma::batteryFillLevel(reading));
+    reading.percent = 80;
+    TEST_ASSERT_EQUAL_UINT8(4, luma::batteryFillLevel(reading));
+    reading.percent = 81;
+    TEST_ASSERT_EQUAL_UINT8(5, luma::batteryFillLevel(reading));
+    reading.percent = 100;
+    TEST_ASSERT_EQUAL_UINT8(5, luma::batteryFillLevel(reading));
+    reading.percent_valid = false;
+    TEST_ASSERT_EQUAL_UINT8(0, luma::batteryFillLevel(reading));
+}
+
+void test_battery_samples_once_per_minute_and_rolls_over() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeBatterySource source;
+    luma::Battery battery;
+    battery.attach(source, storage, diagnostics, clock);
+    clock.now = 1000;
+    clock.unix_utc = 1700000000;
+    battery.begin();
+    TEST_ASSERT_EQUAL(1, battery.sampleCount());
+    TEST_ASSERT_EQUAL_UINT8(87, battery.current().percent);
+
+    clock.now = 1000 + luma::Battery::kSampleMs - 1;
+    battery.update();
+    TEST_ASSERT_EQUAL(1, battery.sampleCount());
+
+    source.reading.percent = 70;
+    clock.now = 1000 + luma::Battery::kSampleMs;
+    battery.update();
+    TEST_ASSERT_EQUAL(2, battery.sampleCount());
+    luma::BatterySample second;
+    TEST_ASSERT_TRUE(battery.sampleAt(1, second));
+    TEST_ASSERT_EQUAL_UINT8(70, second.reading.percent);
+    TEST_ASSERT_EQUAL_UINT32(1700000000, second.unix_utc);
+
+    for (int i = 0; i < 59; ++i) {
+        clock.now += luma::Battery::kSampleMs;
+        source.reading.percent = static_cast<uint8_t>(i);
+        battery.update();
+    }
+    TEST_ASSERT_EQUAL(luma::Battery::kMaxSamples, battery.sampleCount());
+    luma::BatterySample oldest;
+    TEST_ASSERT_TRUE(battery.sampleAt(0, oldest));
+    TEST_ASSERT_EQUAL_UINT8(70, oldest.reading.percent);
+}
+
+void test_battery_checkpoint_restores_and_new_run_is_a_gap() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeBatterySource source;
+    luma::Battery battery;
+    battery.attach(source, storage, diagnostics, clock);
+    clock.now = 0;
+    battery.begin();
+    const uint8_t first_run = battery.runId();
+    for (int i = 0; i < luma::Battery::kCheckpointSamples - 1; ++i) {
+        clock.now += luma::Battery::kSampleMs;
+        battery.update();
+    }
+    TEST_ASSERT_EQUAL(luma::Battery::kCheckpointSamples, battery.sampleCount());
+
+    luma::Battery restored;
+    restored.attach(source, storage, diagnostics, clock);
+    restored.load();
+    TEST_ASSERT_EQUAL(luma::Battery::kCheckpointSamples, restored.sampleCount());
+    luma::BatterySample last_restored;
+    TEST_ASSERT_TRUE(restored.sampleAt(restored.sampleCount() - 1, last_restored));
+    TEST_ASSERT_EQUAL_UINT8(first_run, last_restored.run_id);
+
+    clock.now += luma::Battery::kSampleMs;
+    restored.begin();
+    TEST_ASSERT_TRUE(restored.runId() != first_run);
+    luma::BatterySample newest;
+    TEST_ASSERT_TRUE(restored.sampleAt(restored.sampleCount() - 1, newest));
+    TEST_ASSERT_TRUE(luma::batteryHistoryGap(last_restored, newest));
+}
+
+void test_battery_checkpoint_failure_keeps_memory_and_emits_error() {
+    ControllableStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeBatterySource source;
+    luma::Battery battery;
+    battery.attach(source, storage, diagnostics, clock);
+    clock.now = 0;
+    battery.begin();
+    storage.save_pref_succeeds = false;
+    for (int i = 0; i < luma::Battery::kCheckpointSamples - 1; ++i) {
+        clock.now += luma::Battery::kSampleMs;
+        battery.update();
+    }
+    TEST_ASSERT_EQUAL(luma::Battery::kCheckpointSamples, battery.sampleCount());
+    TEST_ASSERT_TRUE(diagnostics.contains("[ERROR] battery checkpoint failed"));
+
+    luma::BatterySample kept;
+    TEST_ASSERT_TRUE(battery.sampleAt(0, kept));
+    TEST_ASSERT_EQUAL_UINT8(87, kept.reading.percent);
+}
+
+void test_battery_unknown_values_are_not_fabricated() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeBatterySource source;
+    source.reading = luma::BatteryReading{};
+    luma::Battery battery;
+    battery.attach(source, storage, diagnostics, clock);
+    battery.begin();
+    TEST_ASSERT_FALSE(battery.current().percent_valid);
+    TEST_ASSERT_FALSE(battery.current().voltage_valid);
+    TEST_ASSERT_FALSE(battery.current().charging_valid);
+    luma::BatterySample sample;
+    TEST_ASSERT_TRUE(battery.sampleAt(0, sample));
+    TEST_ASSERT_FALSE(sample.reading.percent_valid);
+    TEST_ASSERT_EQUAL_UINT32(0, sample.unix_utc);
 }
 
 void setUp() {}
@@ -2052,10 +2417,19 @@ int main() {
     RUN_TEST(test_settings_wifi_saved_reconnect_skips_password);
     RUN_TEST(test_header_network_glyphs_use_icons_not_spectrum_colors);
     RUN_TEST(test_header_time_and_title_do_not_clip);
+    RUN_TEST(test_battery_glyph_fill_and_charging_color);
+    RUN_TEST(test_header_redraws_when_battery_changes);
+    RUN_TEST(test_battery_history_bars_mark_charging_and_gaps);
+    RUN_TEST(test_settings_battery_pane_shows_reading);
     RUN_TEST(test_signal_strength_from_rssi_bins);
     RUN_TEST(test_ellipsize_appends_ascii_dots);
     RUN_TEST(test_wifi_list_glyph_weakest_is_all_secondary);
     RUN_TEST(test_settings_wifi_status_signal_is_dbm_only);
     RUN_TEST(test_settings_wifi_scan_icons_and_long_ssid);
+    RUN_TEST(test_battery_fill_levels_bucket_percent);
+    RUN_TEST(test_battery_samples_once_per_minute_and_rolls_over);
+    RUN_TEST(test_battery_checkpoint_restores_and_new_run_is_a_gap);
+    RUN_TEST(test_battery_checkpoint_failure_keeps_memory_and_emits_error);
+    RUN_TEST(test_battery_unknown_values_are_not_fabricated);
     return UNITY_END();
 }

@@ -1,0 +1,3 @@
+# Battery lives in Settings; Header uses a six-level glyph
+
+RFC #16 asked for a numeric Header percentage, a percentage line in a standalone Battery App, and a Settings Power entry into that App. The 240 x 135 Header already stacks a 10x10 network glyph above civil time the way Signal strength hides dBm, and a second Launcher App would duplicate the Settings split. Battery is therefore a Core service and a Settings category (not a Launcher App): the Header paints a 10x10 six-level glyph (Wakatake while charging), and the Settings Battery pane shows current charge plus a one-hour per-minute bar chart with gaps between runs.

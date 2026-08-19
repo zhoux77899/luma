@@ -2,10 +2,12 @@
 #include "sdl-display-adapter.h"
 #include "sdl-input-adapter.h"
 
+#include "luma/core/battery.h"
 #include "luma/core/file-storage.h"
 #include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
+#include "luma/platform/host/host-battery-source.h"
 #include "luma/platform/host/host-clock-adapter.h"
 #include "luma/platform/host/host-diagnostics.h"
 #include "luma/platform/host/host-wifi-radio.h"
@@ -27,8 +29,11 @@ int main(int, char**) {
     luma::SdlAudioAdapter audio;
     luma::HostWifiRadio radio;
     luma::Network network;
+    luma::HostBatterySource battery_source;
+    luma::Battery battery;
     network.attach(radio, storage, diagnostics, clock);
-    luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio, network);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
 
