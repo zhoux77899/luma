@@ -120,8 +120,8 @@ void Battery::sampleNow() {
     BatterySample sample;
     sample.reading = current_;
     sample.millis = clock_->millis();
-    const int64_t unix = clock_->unixUtc();
-    sample.unix_utc = unix > 0 ? static_cast<uint32_t>(unix) : 0;
+    const int64_t unix_utc = clock_->unixUtc();
+    sample.unix_utc = unix_utc > 0 ? static_cast<uint32_t>(unix_utc) : 0;
     sample.run_id = run_id_;
 
     if (count_ == kMaxSamples) {
