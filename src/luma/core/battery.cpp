@@ -112,11 +112,23 @@ bool Battery::checkpoint() {
     return true;
 }
 
+void Battery::adopt(const BatteryReading& incoming) {
+    if (!latched_ || !current_.percent_valid || !incoming.percent_valid) {
+        current_ = incoming;
+        latched_ = incoming.percent_valid;
+        return;
+    }
+    const int delta = static_cast<int>(incoming.percent) - static_cast<int>(current_.percent);
+    if (delta >= kPercentHysteresis || delta <= -kPercentHysteresis) {
+        current_ = incoming;
+    }
+}
+
 void Battery::sampleNow() {
     if (source_ == nullptr || clock_ == nullptr) {
         return;
     }
-    current_ = source_->read();
+    adopt(source_->read());
     BatterySample sample;
     sample.reading = current_;
     sample.millis = clock_->millis();
@@ -138,7 +150,7 @@ void Battery::sampleNow() {
 
 void Battery::begin() {
     if (source_ != nullptr) {
-        current_ = source_->read();
+        adopt(source_->read());
     }
     sampleNow();
 }
@@ -148,7 +160,7 @@ void Battery::update() {
         return;
     }
     if (source_ != nullptr) {
-        current_ = source_->read();
+        adopt(source_->read());
     }
     if (!sampled_ || (clock_->millis() - last_sample_ms_) >= kSampleMs) {
         sampleNow();

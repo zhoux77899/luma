@@ -124,6 +124,10 @@ _Avoid_: USB connected, Power
 One of three percent bands the Header battery glyph and Battery history chart share: 0–20 Benihi, 21–30 Yamabuki, 31–100 Wakatake. It is not the six-level Header fill.
 _Avoid_: fill level (for this), charging color, Battery range
 
+**Header fill**:
+The six-level Header battery glyph quantization of charge: empty, then 1–20, 21–40, 41–60, 61–80, 81–100. It is not the Battery band.
+_Avoid_: display node, percentage bar
+
 **Battery sample**:
 One minute's Battery reading: percentage, voltage, charging, validity, and time.
 _Avoid_: telemetry point, log entry

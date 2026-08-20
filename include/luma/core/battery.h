@@ -17,6 +17,7 @@ public:
     static constexpr uint8_t kSchema = 1;
     static constexpr uint32_t kSampleMs = 60000;
     static constexpr int kCheckpointSamples = 5;
+    static constexpr int kPercentHysteresis = 2;
     static constexpr const char* kPrefKey = "battery";
 
     void attach(BatterySource& source, Storage& storage, Diagnostics& diagnostics, Clock& clock);
@@ -48,6 +49,7 @@ private:
     };
 
     void emitError(const char* message);
+    void adopt(const BatteryReading& incoming);
     void sampleNow();
     bool checkpoint();
     PackedSample pack(const BatterySample& sample) const;
@@ -65,6 +67,7 @@ private:
     uint32_t last_sample_ms_ = 0;
     int samples_since_checkpoint_ = 0;
     bool sampled_ = false;
+    bool latched_ = false;
 };
 
 }  // namespace luma

@@ -1,0 +1,3 @@
+# Latch Battery current() with two-percent hysteresis
+
+ADR 0014 derives percent from voltage so `getBatteryLevel()` cannot jitter across Header fill buckets, but the voltage curve is about 8 mV per percent. Cardputer EMA still leaves 1% chatter at Header fill (20/40/60/80) and Battery band (20/30) edges, which changes `headerBatteryKey` every frame and forces a full `fillScreen`. Luma therefore latches the whole `Battery.current()` reading until percent moves by two points. Header fill and Battery band stay pure functions of that percent; Settings percent and voltage stay consistent with the glyph. Heavier adapter smoothing or a Header-only latch would leave Settings live against a frozen glyph, or hide the same chatter behind a longer analog filter.
