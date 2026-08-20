@@ -345,6 +345,7 @@ public:
     bool savePref(const char*, const void*, size_t) override { return true; }
     bool readFile(const char*, char*, size_t, size_t&) override { return false; }
     bool writeFileAtomic(const char*, const char*, size_t) override { return true; }
+    bool removeFile(const char*) override { return true; }
     void processDeferredSaves() override { ++flush_count; }
 };
 

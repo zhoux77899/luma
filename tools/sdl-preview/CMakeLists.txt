@@ -27,11 +27,27 @@ target_include_directories(luma-sdl-preview PRIVATE
 target_compile_definitions(luma-sdl-preview PRIVATE
     LUMA_BUILD_ENV="luma-sdl-preview"
 )
-if(DEFINED LUMA_VERSION)
-    target_compile_definitions(luma-sdl-preview PRIVATE
-        LUMA_VERSION="${LUMA_VERSION}"
+if(NOT DEFINED LUMA_VERSION)
+    file(STRINGS "${LUMA_ROOT}/include/luma/version.h" _luma_version_line
+         REGEX "^#define LUMA_VERSION \"")
+    string(REGEX REPLACE "^#define LUMA_VERSION \"([^\"]+)\".*" "\\1"
+           _luma_base_version "${_luma_version_line}")
+    execute_process(
+        COMMAND git rev-parse --short=7 HEAD
+        WORKING_DIRECTORY "${LUMA_ROOT}"
+        OUTPUT_VARIABLE _luma_git_sha
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
     )
+    if(_luma_git_sha)
+        set(LUMA_VERSION "${_luma_base_version}.${_luma_git_sha}")
+    else()
+        set(LUMA_VERSION "${_luma_base_version}.dev")
+    endif()
 endif()
+target_compile_definitions(luma-sdl-preview PRIVATE
+    LUMA_VERSION="${LUMA_VERSION}"
+)
 
 if(APPLE)
     set_target_properties(luma-sdl-preview PROPERTIES

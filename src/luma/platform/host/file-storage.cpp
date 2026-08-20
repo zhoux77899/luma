@@ -218,6 +218,20 @@ bool FileStorage::writeFileAtomic(const char* path, const char* data, size_t len
     return true;
 }
 
+bool FileStorage::removeFile(const char* path) {
+    if (path == nullptr) {
+        return false;
+    }
+    const std::string full = join(path);
+    if (!existsPath(full.c_str())) {
+        return true;
+    }
+    if (isDirectory(full.c_str())) {
+        return false;
+    }
+    return std::remove(full.c_str()) == 0;
+}
+
 void FileStorage::processDeferredSaves() {}
 
 }  // namespace luma

@@ -14,6 +14,7 @@
 #include "luma/ui/layout.h"
 #include "luma/ui/renderer.h"
 #include "luma/ui/theme.h"
+#include "luma/version.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -208,6 +209,7 @@ void SettingsApp::onEnter(AppContext& context) {
     wifi_section_ = WifiSection::Status;
     category_ = kDisplay;
     detail_ = 0;
+    about_row_ = 0;
     editor_index_ = 0;
     tz_section_ = 0;
     tz_index_ = 0;
@@ -583,6 +585,25 @@ void SettingsApp::updateTimeZoneEditor(const InputFrame& input) {
     }
 }
 
+void SettingsApp::updateAboutEditor(const InputFrame& input) {
+    if (input.action == InputAction::Back) {
+        editor_ = Editor::None;
+        pane_ = Pane::Detail;
+        context_->consumeBack();
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Up && about_row_ > 0) {
+        --about_row_;
+        context_->requestRedraw();
+        return;
+    }
+    if (input.action == InputAction::Down && about_row_ + 1 < 3) {
+        ++about_row_;
+        context_->requestRedraw();
+    }
+}
+
 void SettingsApp::updateSplitPane(const InputFrame& input) {
     if (input.action == InputAction::Back) {
         if (pane_ == Pane::Detail) {
@@ -636,7 +657,9 @@ void SettingsApp::updateSplitPane(const InputFrame& input) {
     }
     if (input.action == InputAction::Confirm) {
         if (isAbout()) {
-            context_->requestEnter("about");
+            editor_ = Editor::About;
+            about_row_ = 0;
+            context_->requestRedraw();
             return;
         }
         if (isTheme()) {
@@ -672,6 +695,10 @@ void SettingsApp::update(const InputFrame& input) {
     }
     if (editor_ == Editor::TimeZone) {
         updateTimeZoneEditor(input);
+        return;
+    }
+    if (editor_ == Editor::About) {
+        updateAboutEditor(input);
         return;
     }
     updateSplitPane(input);
@@ -1100,6 +1127,68 @@ void SettingsApp::drawTimeZoneEditor() {
     renderer.endFrame();
 }
 
+void SettingsApp::drawAboutEditor() {
+    const theme::Palette palette = theme::paletteFor(context_->settings().theme(), accent());
+    UiRenderer renderer(context_->display(), palette);
+    renderer.beginFrame();
+    renderer.clearAppCanvas();
+    drawStandardHeader(*context_, renderer, name());
+
+    const int left_x = layout::kChromeInset;
+    const int outer_y = layout::kContentBoth.y + 2;
+    const int outer_h = layout::kContentBoth.h - 4;
+    const Rect outer{left_x, outer_y, kCategoryPaneWidth, outer_h};
+    renderer.surface().fillRoundRect(outer, layout::kCardRadius, palette.card);
+
+    const int inner_x = left_x + kOuterPad;
+    const int start = listWindowStart(category_, kCategoryCount, kCategoryVisible);
+    const bool overflow = kCategoryCount > kCategoryVisible;
+    if (overflow) {
+        drawOverflowScrollbar(renderer.surface(), palette,
+                              {left_x + kCategoryPaneWidth - kOuterPad - kScrollbarWidth,
+                               outer_y + kOuterPad, kScrollbarWidth, outer_h - 2 * kOuterPad},
+                              kCategoryCount, start, kCategoryVisible);
+    }
+    const int inner_w =
+        kCategoryPaneWidth - 2 * kOuterPad - (overflow ? kScrollbarWidth + 2 : 0);
+    const int inner_y0 = outer_y + kOuterPad;
+    for (int i = 0; i < kCategoryVisible && start + i < kCategoryCount; ++i) {
+        const int index = start + i;
+        const Rect card{inner_x, inner_y0 + i * (kInnerCardHeight + kInnerCardGap), inner_w,
+                        kInnerCardHeight};
+        const bool selected = index == category_;
+        if (selected) {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.canvas);
+            renderer.surface().drawRoundRect(card, layout::kCardRadius, palette.accent);
+        } else {
+            renderer.surface().fillRoundRect(card, layout::kCardRadius, palette.canvas);
+        }
+        renderer.surface().drawText({card.x + 4, centeredTextY(card.y, card.h)},
+                                    {selected ? palette.primary_text : palette.secondary_text, 1},
+                                    kCategoryLabels[index]);
+    }
+
+    const int right_x = left_x + kCategoryPaneWidth + kPaneGap;
+    const int right_w = layout::kWidth - layout::kChromeInset - right_x;
+    const Rect right_outer{right_x, outer_y, right_w, outer_h};
+    renderer.surface().fillRoundRect(right_outer, layout::kCardRadius, palette.card);
+
+    const int detail_x = right_x + kOuterPad;
+    const int detail_w = right_w - 2 * kOuterPad;
+    int row_y = outer_y + kOuterPad;
+    const char* labels[3] = {"Version", "Model", "Repository"};
+    const char* values[3] = {LUMA_VERSION, LUMA_HARDWARE, LUMA_REPOSITORY};
+    for (int i = 0; i < 3; ++i) {
+        const Rect row{detail_x, row_y, detail_w, kRowBoxHeight};
+        drawEditorRow(renderer.surface(), palette, row, labels[i], values[i], i == about_row_);
+        row_y += kRowBoxHeight + kInnerCardGap;
+    }
+
+    const KeyHint hints[] = {{"Esc", "back"}};
+    drawStandardFooter(renderer, hints, 1);
+    renderer.endFrame();
+}
+
 void SettingsApp::draw() {
     if (context_ == nullptr) {
         return;
@@ -1110,6 +1199,10 @@ void SettingsApp::draw() {
     }
     if (editor_ == Editor::TimeZone) {
         drawTimeZoneEditor();
+        return;
+    }
+    if (editor_ == Editor::About) {
+        drawAboutEditor();
         return;
     }
     drawSplitPane();

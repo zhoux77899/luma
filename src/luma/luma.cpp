@@ -52,7 +52,6 @@ void Luma::begin() {
     audio_.setVolume(settings_.volume());
     registerApp(launcher_);
     registerApp(settings_app_);
-    registerApp(about_app_);
     registerApp(notes_app_);
     drawBootScreen();
     diagnostics_.emit("BOOT", "Luma Cardputer ADV started");

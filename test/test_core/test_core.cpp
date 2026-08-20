@@ -5,9 +5,9 @@
 #include "luma/core/file-storage.h"
 #include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
-#include "luma/apps/about-app.h"
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
+#include "luma/version.h"
 #include "luma/core/network.h"
 #include "luma/core/battery.h"
 #include "luma/core/battery-types.h"
@@ -230,8 +230,8 @@ void test_luma_enters_launcher_after_boot_timeout() {
     TEST_ASSERT_TRUE(diagnostics.contains("[APP] enter launcher"));
     TEST_ASSERT_TRUE(display.hasText("LUMA"));
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
-    TEST_ASSERT_TRUE(display.hasText("ABOUT"));
     TEST_ASSERT_TRUE(display.hasText("NOTES"));
+    TEST_ASSERT_FALSE(display.hasText("ABOUT"));
     TEST_ASSERT_FALSE(display.hasText("Launcher"));
     TEST_ASSERT_FALSE(display.hasText("LAUNCHER"));
     TEST_ASSERT_EQUAL_UINT8(80, display.brightness);
@@ -463,18 +463,18 @@ void test_launcher_navigation_stays_in_bounds() {
 
     input.push(makeAction(InputAction::Right));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kYamabuki));
-    TEST_ASSERT_TRUE(display.hasFill(appCardBounds(1, 0), kYamabuki));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kWakatake));
+    TEST_ASSERT_TRUE(display.hasFill(appCardBounds(1, 0), kWakatake));
 
     input.push(makeAction(InputAction::Left));
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kWakatake));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kTsuyukusa));
 
     input.push(makeAction(InputAction::Right));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kWakatake));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kWakatake));
 }
 
 void test_launcher_header_updates_when_minute_changes() {
@@ -512,7 +512,8 @@ void test_ui_dialog_draws_title_and_body() {
 
     TEST_ASSERT_TRUE(display.hasText("Title"));
     TEST_ASSERT_TRUE(display.hasText("Body"));
-    TEST_ASSERT_TRUE(display.hasStroke({30, 30, 180, 75}, kAccent));
+    TEST_ASSERT_TRUE(display.hasStroke({30, 38, 180, 75}, kAccent));
+    TEST_ASSERT_TRUE(display.hasFill({30, 38, 180, 75}, luma::theme::paletteFor(0).canvas));
 }
 
 void test_input_manager_dispatches_fake_source() {
@@ -586,6 +587,27 @@ void test_file_storage_keeps_previous_file_when_replace_fails() {
     TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(7, length);
     TEST_ASSERT_EQUAL_STRING("keep-me", buffer);
+}
+
+void test_in_memory_storage_removes_file() {
+    luma::InMemoryStorage storage;
+    TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/00.txt", "gone", 4));
+    TEST_ASSERT_TRUE(storage.removeFile("/apps/notes/00.txt"));
+    char buffer[8] = {};
+    size_t length = 0;
+    TEST_ASSERT_FALSE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
+}
+
+void test_file_storage_removes_file() {
+    const std::string root = nativeTestStorageRoot("remove");
+    luma::FileStorage storage(root.c_str());
+    TEST_ASSERT_TRUE(storage.begin());
+    TEST_ASSERT_TRUE(storage.writeFileAtomic("/apps/notes/00.txt", "gone", 4));
+    TEST_ASSERT_TRUE(storage.removeFile("/apps/notes/00.txt"));
+    char buffer[8] = {};
+    size_t length = 0;
+    TEST_ASSERT_FALSE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.removeFile("/apps/notes/00.txt"));
 }
 
 void test_ui_font_lowercase_is_not_shifted_by_backslash_comment() {
@@ -855,13 +877,11 @@ void test_theme_palette_inverts_for_light() {
 
 void test_app_accent_is_identity_color() {
     luma::SettingsApp settings_app;
-    luma::AboutApp about_app;
     luma::NotesApp notes_app;
     std::vector<std::string> log;
     RecordingApp extra("extra", "Extra", 'x', log);
 
     TEST_ASSERT_TRUE(luma::colorsEqual(settings_app.accent(), kTsuyukusa));
-    TEST_ASSERT_TRUE(luma::colorsEqual(about_app.accent(), kYamabuki));
     TEST_ASSERT_TRUE(luma::colorsEqual(notes_app.accent(), kWakatake));
     TEST_ASSERT_TRUE(luma::colorsEqual(extra.accent(), kAccent));
 }
@@ -901,12 +921,16 @@ void test_settings_opens_about_with_build_identity() {
     input.push(makeAction(InputAction::Confirm));
     luma.update();
 
-    TEST_ASSERT_EQUAL_STRING("about", luma.currentAppId());
-    TEST_ASSERT_TRUE(display.hasText("ABOUT"));
-    TEST_ASSERT_TRUE(display.hasText("0.1"));
+    TEST_ASSERT_EQUAL_STRING("settings", luma.currentAppId());
+    TEST_ASSERT_TRUE(display.hasText("Version"));
+    TEST_ASSERT_TRUE(display.hasText(LUMA_VERSION));
+    TEST_ASSERT_TRUE(display.hasText("Model"));
     TEST_ASSERT_TRUE(display.hasText("Cardputer ADV"));
-    TEST_ASSERT_TRUE(display.hasText("native"));
-    TEST_ASSERT_TRUE(display.hasText("MIT"));
+    TEST_ASSERT_TRUE(display.hasText("Repository"));
+    TEST_ASSERT_TRUE(display.hasText(LUMA_REPOSITORY));
+    TEST_ASSERT_FALSE(display.hasText("ABOUT"));
+    TEST_ASSERT_FALSE(display.hasText("native"));
+    TEST_ASSERT_FALSE(display.hasText("MIT"));
 }
 
 void test_settings_category_left_right_does_not_change_brightness() {
@@ -1098,9 +1122,20 @@ void test_header_time_updates_outside_launcher() {
     TEST_ASSERT_TRUE(display.hasText("10:01"));
 }
 
-void enterNotes(Luma& luma, FakeInputSource& input) {
-    input.push(makeAction(InputAction::Down));
+void enterNotesApp(Luma& luma, FakeInputSource& input) {
+    input.push(makeAction(InputAction::Right));
     luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
+void enterNotes(Luma& luma, FakeInputSource& input) {
+    enterNotesApp(luma, input);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
+void reopenNote(Luma& luma, FakeInputSource& input) {
     input.push(makeAction(InputAction::Confirm));
     luma.update();
 }
@@ -1137,14 +1172,14 @@ void test_notes_round_trips_multiline_text() {
     typeText(luma, input, "cd");
     input.push(makeAction(InputAction::Back));
     luma.update();
-    enterNotes(luma, input);
+    reopenNote(luma, input);
 
     TEST_ASSERT_TRUE(display.hasText("ab"));
     TEST_ASSERT_TRUE(display.hasText("cd"));
 
     char buffer[16] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(5, length);
     TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "ab\ncd", 5));
 }
@@ -1180,7 +1215,7 @@ void test_notes_deletes_in_the_middle() {
 
     char buffer[16] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(4, length);
     TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "helo", 4));
 }
@@ -1217,7 +1252,7 @@ void test_notes_up_keeps_column() {
 
     char buffer[16] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(6, length);
     TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "abX\ncd", 6));
 }
@@ -1253,7 +1288,7 @@ void test_notes_rejects_overflow_and_shows_full() {
 
     char buffer[luma::NotesApp::kMaxLength + 4] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(luma::NotesApp::kMaxLength, length);
     TEST_ASSERT_EQUAL_INT('a', buffer[0]);
     TEST_ASSERT_EQUAL_INT('a', buffer[luma::NotesApp::kMaxLength - 1]);
@@ -1290,7 +1325,7 @@ void test_notes_failed_save_keeps_previous_and_memory() {
     TEST_ASSERT_TRUE(display.hasText("keepZ"));
     char buffer[16] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(4, length);
     TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "keep", 4));
 }
@@ -1321,9 +1356,191 @@ void test_notes_autosaves_after_idle() {
 
     char buffer[16] = {};
     size_t length = 0;
-    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/notes.txt", buffer, sizeof(buffer), length));
+    TEST_ASSERT_TRUE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
     TEST_ASSERT_EQUAL_UINT(2, length);
     TEST_ASSERT_EQUAL_INT(0, std::memcmp(buffer, "hi", 2));
+}
+
+void test_notes_list_shows_new_note() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotesApp(luma, input);
+
+    TEST_ASSERT_EQUAL_STRING("notes", luma.currentAppId());
+    TEST_ASSERT_TRUE(display.hasText("New note"));
+    TEST_ASSERT_FALSE(display.hasText("Untitled"));
+}
+
+void test_notes_discards_empty() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+
+    TEST_ASSERT_EQUAL_STRING("notes", luma.currentAppId());
+    TEST_ASSERT_TRUE(display.hasText("New note"));
+    char buffer[8] = {};
+    size_t length = 0;
+    TEST_ASSERT_FALSE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
+}
+
+void test_notes_deletes_after_dialog() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotes(luma, input);
+    typeText(luma, input, "keep");
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("01"));
+    TEST_ASSERT_TRUE(display.hasText("keep"));
+
+    input.push(makeAction(InputAction::Delete));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("Delete?"));
+    TEST_ASSERT_TRUE(display.hasText("keep"));
+
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasText("New note"));
+    char buffer[8] = {};
+    size_t length = 0;
+    TEST_ASSERT_FALSE(storage.readFile("/apps/notes/00.txt", buffer, sizeof(buffer), length));
+}
+
+void test_notes_list_indexes_and_scrolls() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotesApp(luma, input);
+    for (int i = 0; i < 5; ++i) {
+        clock.now = static_cast<uint32_t>(1000 + i);
+        input.push(makeAction(InputAction::Confirm));
+        luma.update();
+        input.push(makeText(static_cast<char>('a' + i)));
+        luma.update();
+        input.push(makeAction(InputAction::Back));
+        luma.update();
+        if (i < 4) {
+            for (int step = 0; step <= i; ++step) {
+                input.push(makeAction(InputAction::Down));
+                luma.update();
+            }
+        }
+    }
+
+    TEST_ASSERT_TRUE(display.hasText("01"));
+    TEST_ASSERT_TRUE(display.hasText("04"));
+    TEST_ASSERT_FALSE(display.hasText("05"));
+
+    for (int step = 0; step < 4; ++step) {
+        input.push(makeAction(InputAction::Down));
+        luma.update();
+    }
+    TEST_ASSERT_TRUE(display.hasText("05"));
+    TEST_ASSERT_TRUE(display.hasText("02"));
+    TEST_ASSERT_FALSE(display.hasText("01"));
+}
+
+void test_notes_full_blocks_new() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    enterNotesApp(luma, input);
+    for (int i = 0; i < luma::NotesApp::kMaxNotes; ++i) {
+        clock.now = static_cast<uint32_t>(1000 + i);
+        input.push(makeAction(InputAction::Confirm));
+        luma.update();
+        input.push(makeText(static_cast<char>('a' + (i % 26))));
+        luma.update();
+        input.push(makeAction(InputAction::Back));
+        luma.update();
+        for (int step = 0; step < luma::NotesApp::kMaxNotes; ++step) {
+            input.push(makeAction(InputAction::Down));
+            luma.update();
+        }
+    }
+
+    TEST_ASSERT_TRUE(display.hasText("New note"));
+    TEST_ASSERT_TRUE(display.hasText("FULL"));
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+    TEST_ASSERT_EQUAL_STRING("notes", luma.currentAppId());
+    TEST_ASSERT_TRUE(display.hasText("New note"));
+    TEST_ASSERT_TRUE(display.hasText("FULL"));
 }
 
 void test_host_audio_emits_event_log() {
@@ -2507,6 +2724,8 @@ int main() {
     RUN_TEST(test_in_memory_storage_round_trips_notes);
     RUN_TEST(test_file_storage_persists_across_instances);
     RUN_TEST(test_file_storage_keeps_previous_file_when_replace_fails);
+    RUN_TEST(test_in_memory_storage_removes_file);
+    RUN_TEST(test_file_storage_removes_file);
     RUN_TEST(test_ui_font_lowercase_is_not_shifted_by_backslash_comment);
     RUN_TEST(test_ui_font_zh_hans_ssid_is_not_question_marks);
     RUN_TEST(test_settings_loads_valid_keys_independently);
@@ -2531,6 +2750,11 @@ int main() {
     RUN_TEST(test_notes_rejects_overflow_and_shows_full);
     RUN_TEST(test_notes_failed_save_keeps_previous_and_memory);
     RUN_TEST(test_notes_autosaves_after_idle);
+    RUN_TEST(test_notes_list_shows_new_note);
+    RUN_TEST(test_notes_discards_empty);
+    RUN_TEST(test_notes_deletes_after_dialog);
+    RUN_TEST(test_notes_list_indexes_and_scrolls);
+    RUN_TEST(test_notes_full_blocks_new);
     RUN_TEST(test_host_audio_emits_event_log);
     RUN_TEST(test_civil_time_dst_spring_forward_new_york);
     RUN_TEST(test_clock_unset_renders_invalid_until_ntp);

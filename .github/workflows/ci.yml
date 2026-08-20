@@ -39,7 +39,7 @@ jobs:
           default_version="$(sed -n 's/^#define LUMA_VERSION "\([^"]*\)"/\1/p' include/luma/version.h | head -n 1)"
           test -n "${default_version}"
           short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-7)"
-          identity="${default_version}+g${short_sha}"
+          identity="${default_version}.${short_sha}"
           slug="${default_version}-g${short_sha}"
           echo "version=${identity}" >> "${GITHUB_OUTPUT}"
           echo "slug=${slug}" >> "${GITHUB_OUTPUT}"
