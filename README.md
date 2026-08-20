@@ -15,7 +15,7 @@
 </p>
 
 Luma is statically compiled firmware for the M5Stack Cardputer ADV. It boots through a
-short logo screen into Launcher, where the built-in Settings, About, and Notes Apps are
+short logo screen into Launcher, where the built-in Settings and Notes Apps are
 available. Platform-independent Core contracts are reused by the Cardputer firmware and
 the host-side SDL preview.
 
@@ -81,11 +81,10 @@ before running the SDL setup commands.
 ## Included Apps
 
 - **Launcher** opens the registered Apps with directional navigation and confirm.
-- **Settings** persists brightness, Volume, and Dark/Light Theme preference.
-- **Notes** edits a bounded plain-text Notes document stored on the device and autosaves
-  after edits.
-- **About** shows the installed Luma version, hardware target, build environment, and
-  license.
+- **Settings** persists brightness, Volume, and Dark/Light Theme preference. System →
+  About shows the Build identity, Cardputer ADV model, and repository.
+- **Notes** lists saved Notes and edits one bounded Notes document at a time. The first
+  line is the Note title. Leaving the editor saves; an empty Note is discarded.
 
 ## Flash a release
 

@@ -149,15 +149,36 @@ The right list of values or entries for the selected Settings category.
 _Avoid_: content pane, inspector
 
 **Notes**:
-The App that edits a bounded plain-text Notes document.
+The App that lists Notes and edits one Notes document at a time.
 _Avoid_: notepad
 
+**Note**:
+One saved Notes document in the Note list. Notes keeps at most sixteen.
+_Avoid_: file, page, entry
+
+**Note list**:
+The first screen of Notes: saved Notes newest-modified first inside one rounded shell, each as a separate index chip and Title chip, with New note pinned at the bottom. Overflow keeps the scrollbar inside that shell.
+_Avoid_: index, file browser, notebook
+
+**Note title**:
+The first line of a Notes document. The editor draws it at size 2; the Note list uses it as the row label.
+_Avoid_: filename, heading field, metadata title
+
+**New note**:
+The pinned Note list control that opens an empty editor.
+_Avoid_: add button, create file
+
 **Notes document**:
-The bounded plain-text content Notes edits.
-_Avoid_: file, note, rich text
+The bounded plain-text content of one Note.
+_Avoid_: file, rich text
 
 **About**:
-The read-only App that identifies the installed Luma build and target hardware.
+The System nested view that identifies the installed Luma build, hardware, and repository.
+_Avoid_: About App
+
+**Build identity**:
+The version string About shows: a release is X.Y.Z; an unreleased build is X.Y.Z.{commit}.
+_Avoid_: semver +build, git describe
 
 **Cardputer ADV**:
 The M5Stack hardware Luma runs on; the v0.1 release authority.

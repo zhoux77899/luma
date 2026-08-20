@@ -17,7 +17,7 @@ public:
 
 private:
     enum class Pane : int { Category, Detail };
-    enum class Editor : int { None, Wifi, Password, TimeZone };
+    enum class Editor : int { None, Wifi, Password, TimeZone, About };
     enum class WifiSection : int { Status, Saved, Scan };
 
     void applyImmediate();
@@ -36,9 +36,11 @@ private:
     void updateWifiEditor(const InputFrame& input);
     void updatePasswordEditor(const InputFrame& input);
     void updateTimeZoneEditor(const InputFrame& input);
+    void updateAboutEditor(const InputFrame& input);
     void drawSplitPane();
     void drawWifiEditor();
     void drawTimeZoneEditor();
+    void drawAboutEditor();
     void enterWifiStatusDetail();
     void enterTimeZoneEditor();
     int wifiSectionCount() const;
@@ -54,6 +56,7 @@ private:
     WifiSection wifi_section_ = WifiSection::Status;
     int category_ = 0;
     int detail_ = 0;
+    int about_row_ = 0;
     int editor_index_ = 0;
     int tz_section_ = 0;
     int tz_index_ = 0;

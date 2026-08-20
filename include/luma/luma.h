@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-#include "luma/apps/about-app.h"
 #include "luma/apps/launcher-app.h"
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
@@ -59,7 +58,6 @@ private:
     AppManager app_manager_;
     LauncherApp launcher_;
     SettingsApp settings_app_;
-    AboutApp about_app_;
     NotesApp notes_app_;
     bool booting_ = false;
     uint32_t boot_started_ms_ = 0;

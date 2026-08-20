@@ -17,6 +17,7 @@ public:
     bool savePref(const char* key, const void* data, size_t size) override;
     bool readFile(const char* path, char* buffer, size_t capacity, size_t& length) override;
     bool writeFileAtomic(const char* path, const char* data, size_t length) override;
+    bool removeFile(const char* path) override;
     void processDeferredSaves() override;
 
 private:

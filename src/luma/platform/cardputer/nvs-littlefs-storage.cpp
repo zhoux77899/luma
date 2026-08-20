@@ -159,6 +159,16 @@ bool NvsLittleFsStorage::writeFileAtomic(const char* path, const char* data, siz
     return true;
 }
 
+bool NvsLittleFsStorage::removeFile(const char* path) {
+    if (!fs_ready_ || path == nullptr) {
+        return false;
+    }
+    if (!LittleFS.exists(path)) {
+        return true;
+    }
+    return LittleFS.remove(path);
+}
+
 void NvsLittleFsStorage::processDeferredSaves() {}
 
 }  // namespace luma

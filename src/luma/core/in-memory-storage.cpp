@@ -38,6 +38,14 @@ bool InMemoryStorage::writeFileAtomic(const char* path, const char* data, size_t
     return true;
 }
 
+bool InMemoryStorage::removeFile(const char* path) {
+    if (path == nullptr) {
+        return false;
+    }
+    files_.erase(path);
+    return true;
+}
+
 void InMemoryStorage::processDeferredSaves() {}
 
 }  // namespace luma

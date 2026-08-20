@@ -265,11 +265,17 @@ void drawList(DisplaySurface& display, const theme::Palette& palette, const char
 
 void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
                 const char* body) {
-    const Rect box{30, 30, 180, 75};
-    display.fillRect(box, palette.canvas);
-    display.drawRect(box, palette.accent);
-    display.drawText({40, 40}, {palette.primary_text, 1}, title != nullptr ? title : "");
-    display.drawText({40, 56}, {palette.secondary_text, 1}, body != nullptr ? body : "");
+    constexpr int kBoxW = 180;
+    constexpr int kBoxH = 75;
+    const int box_y =
+        layout::kContentBoth.y + (layout::kContentBoth.h - kBoxH) / 2;
+    const Rect box{(layout::kWidth - kBoxW) / 2, box_y, kBoxW, kBoxH};
+    display.fillRoundRect(box, layout::kCardRadius, palette.canvas);
+    display.drawRoundRect(box, layout::kCardRadius, palette.accent);
+    display.drawText({box.x + 10, box.y + 10}, {palette.primary_text, 1},
+                     title != nullptr ? title : "");
+    display.drawText({box.x + 10, box.y + 26}, {palette.secondary_text, 1},
+                     body != nullptr ? body : "");
 }
 
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
