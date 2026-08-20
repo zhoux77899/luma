@@ -2291,6 +2291,88 @@ void test_battery_fill_levels_bucket_percent() {
     TEST_ASSERT_EQUAL_UINT8(0, luma::batteryFillLevel(reading));
 }
 
+void test_battery_current_latches_one_percent_chatter() {
+    luma::InMemoryStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeBatterySource source;
+    source.reading.percent = 80;
+    source.reading.voltage_mv = 3940;
+    luma::Battery battery;
+    battery.attach(source, storage, diagnostics, clock);
+    clock.now = 1000;
+    battery.begin();
+    TEST_ASSERT_EQUAL_UINT8(80, battery.current().percent);
+    TEST_ASSERT_EQUAL_UINT16(3940, battery.current().voltage_mv);
+
+    source.reading.percent = 81;
+    source.reading.voltage_mv = 3948;
+    battery.update();
+    TEST_ASSERT_EQUAL_UINT8(80, battery.current().percent);
+    TEST_ASSERT_EQUAL_UINT16(3940, battery.current().voltage_mv);
+
+    source.reading.percent = 82;
+    source.reading.voltage_mv = 3956;
+    battery.update();
+    TEST_ASSERT_EQUAL_UINT8(82, battery.current().percent);
+    TEST_ASSERT_EQUAL_UINT16(3956, battery.current().voltage_mv);
+
+    source.reading.percent = 30;
+    source.reading.voltage_mv = 3540;
+    battery.update();
+    TEST_ASSERT_EQUAL_UINT8(30, battery.current().percent);
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Warn, luma::batteryBand(battery.current().percent));
+
+    source.reading.percent = 31;
+    source.reading.voltage_mv = 3548;
+    battery.update();
+    TEST_ASSERT_EQUAL_UINT8(30, battery.current().percent);
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Warn, luma::batteryBand(battery.current().percent));
+
+    source.reading.percent = 32;
+    source.reading.voltage_mv = 3556;
+    battery.update();
+    TEST_ASSERT_EQUAL_UINT8(32, battery.current().percent);
+    TEST_ASSERT_EQUAL(luma::BatteryBand::Ok, luma::batteryBand(battery.current().percent));
+}
+
+void test_header_holds_fill_across_one_percent_chatter() {
+    FakeDisplay display;
+    FakeInputSource input;
+    FakeClock clock;
+    luma::InMemoryStorage storage;
+    Settings settings;
+    FakeDiagnostics diagnostics;
+    FakeAudio audio;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    network.attach(radio, storage, diagnostics, clock);
+    battery.attach(battery_source, storage, diagnostics, clock);
+    Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+
+    luma.begin();
+    enterLauncher(luma, clock);
+    battery_source.reading.percent = 80;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill4, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::kWakatake));
+
+    for (int i = 0; i < 20; ++i) {
+        battery_source.reading.percent = (i % 2 == 0) ? 81 : 80;
+        luma.update();
+    }
+    battery_source.reading.percent = 81;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill4, luma::theme::kWakatake));
+    TEST_ASSERT_FALSE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::kWakatake));
+
+    battery_source.reading.percent = 82;
+    luma.update();
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kBatteryFill5, luma::theme::kWakatake));
+}
+
 void test_battery_samples_once_per_minute_and_rolls_over() {
     luma::InMemoryStorage storage;
     FakeClock clock;
@@ -2486,6 +2568,8 @@ int main() {
     RUN_TEST(test_battery_band_from_percent);
     RUN_TEST(test_battery_percent_from_voltage_mv);
     RUN_TEST(test_battery_fill_levels_bucket_percent);
+    RUN_TEST(test_battery_current_latches_one_percent_chatter);
+    RUN_TEST(test_header_holds_fill_across_one_percent_chatter);
     RUN_TEST(test_battery_samples_once_per_minute_and_rolls_over);
     RUN_TEST(test_battery_checkpoint_restores_and_new_run_is_a_gap);
     RUN_TEST(test_battery_checkpoint_failure_keeps_memory_and_emits_error);
