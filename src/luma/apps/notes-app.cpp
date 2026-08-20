@@ -227,9 +227,9 @@ uint32_t NotesApp::stamp() const {
     if (context_ == nullptr) {
         return next_stamp_;
     }
-    const int64_t unix = context_->clock().unixUtc();
-    if (unix > 0) {
-        return static_cast<uint32_t>(unix);
+    const int64_t unix_utc = context_->clock().unixUtc();
+    if (unix_utc > 0) {
+        return static_cast<uint32_t>(unix_utc);
     }
     const uint32_t ms = context_->clock().millis();
     if (ms > 0) {
