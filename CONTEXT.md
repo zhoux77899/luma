@@ -172,6 +172,34 @@ _Avoid_: add button, create file
 The bounded plain-text content of one Note.
 _Avoid_: file, rich text
 
+**DOTS**:
+The App that lists Matrices and paints one Matrix of LED cells at a time.
+_Avoid_: SIGN, LED editor, 排版工具
+
+**Matrix**:
+The 60×30 document of LED cells that DOTS paints. DOTS keeps at most sixteen.
+_Avoid_: canvas, Slot (as the user-facing name), file, sign
+
+**Matrix list**:
+The first screen of DOTS: saved Matrices newest-modified first, each as a separate index chip and name chip, with New matrix pinned at the bottom.
+_Avoid_: Slot list, file browser, index
+
+**New matrix**:
+The pinned Matrix list control that opens an empty paint view.
+_Avoid_: add button, create file, New slot
+
+**LED cell**:
+One lamp in a Matrix. Off is Kuro; a lit cell holds one Pen color.
+_Avoid_: screen pixel, lamp pixel
+
+**Dot**:
+The lit drawing of one LED cell: a center mark with a Kuro gutter.
+_Avoid_: circle API, bitmap cell
+
+**Pen color**:
+The palette color Confirm paints onto the current LED cell. Off is not a Pen color; Delete extinguishes.
+_Avoid_: brush, ink, Theme preference
+
 **About**:
 The System nested view that identifies the installed Luma build, hardware, and repository.
 _Avoid_: About App

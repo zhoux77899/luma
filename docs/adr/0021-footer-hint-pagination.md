@@ -1,0 +1,3 @@
+# Overflowing Footer hints paginate instead of clipping
+
+`drawFooterHints` used to keep drawing past 240px. DOTS needs five paint hints plus a Pen-color swatch, which does not fit one 15px row. The shared Footer now packs whole hint groups into pages and flips every 5000ms when they overflow. An optional swatch sits on the right and shrinks the hint span. Two or three short groups still fit one page, so Settings and Notes do not change. A `kFooterPageBreak` ends the current page even when the next group still fits. DOTS paint uses one after back so paint, erase, and back stay on the first page, and color and clear stay on the second.

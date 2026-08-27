@@ -5,6 +5,7 @@
 #include "luma/core/file-storage.h"
 #include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
+#include "luma/apps/dots-app.h"
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
 #include "luma/version.h"
@@ -231,6 +232,7 @@ void test_luma_enters_launcher_after_boot_timeout() {
     TEST_ASSERT_TRUE(display.hasText("LUMA"));
     TEST_ASSERT_TRUE(display.hasText("SETTINGS"));
     TEST_ASSERT_TRUE(display.hasText("NOTES"));
+    TEST_ASSERT_TRUE(display.hasText("DOTS"));
     TEST_ASSERT_FALSE(display.hasText("ABOUT"));
     TEST_ASSERT_FALSE(display.hasText("Launcher"));
     TEST_ASSERT_FALSE(display.hasText("LAUNCHER"));
@@ -240,6 +242,7 @@ void test_luma_enters_launcher_after_boot_timeout() {
     TEST_ASSERT_TRUE(display.hasBitmap({kHeaderLogoX, kHeaderLogoY}, kHeaderLogoSize,
                                       kHeaderLogoSize));
     TEST_ASSERT_TRUE(display.hasFill(appCardBounds(0, 0), kTsuyukusa));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kYamabuki));
     const auto selected = appCardBounds(0, 0);
     const luma::Rect inner{selected.x + 1, selected.y + 1, selected.w - 2, selected.h - 2};
     TEST_ASSERT_FALSE(display.hasStroke(inner, kTsuyukusa));
@@ -470,8 +473,10 @@ void test_launcher_navigation_stays_in_bounds() {
     luma.update();
     input.push(makeAction(InputAction::Down));
     luma.update();
-    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 0), kTsuyukusa));
+    TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(0, 1), kYamabuki));
 
+    input.push(makeAction(InputAction::Up));
+    luma.update();
     input.push(makeAction(InputAction::Right));
     luma.update();
     TEST_ASSERT_TRUE(display.hasStroke(appCardBounds(1, 0), kWakatake));
@@ -514,6 +519,102 @@ void test_ui_dialog_draws_title_and_body() {
     TEST_ASSERT_TRUE(display.hasText("Body"));
     TEST_ASSERT_TRUE(display.hasStroke({30, 38, 180, 75}, kAccent));
     TEST_ASSERT_TRUE(display.hasFill({30, 38, 180, 75}, luma::theme::paletteFor(0).canvas));
+}
+
+void test_theme_includes_spectrum_and_brand_paint_colors() {
+    TEST_ASSERT_EQUAL_UINT8(0x86, luma::theme::kNae.r);
+    TEST_ASSERT_EQUAL_UINT8(0xC1, luma::theme::kNae.g);
+    TEST_ASSERT_EQUAL_UINT8(0x66, luma::theme::kNae.b);
+    TEST_ASSERT_EQUAL_UINT8(0x8B, luma::theme::kFuji.r);
+    TEST_ASSERT_EQUAL_UINT8(0x81, luma::theme::kFuji.g);
+    TEST_ASSERT_EQUAL_UINT8(0xC3, luma::theme::kFuji.b);
+    TEST_ASSERT_EQUAL_UINT8(0xF5, luma::theme::kMomo.r);
+    TEST_ASSERT_EQUAL_UINT8(0x96, luma::theme::kMomo.g);
+    TEST_ASSERT_EQUAL_UINT8(0xAA, luma::theme::kMomo.b);
+}
+
+void test_footer_hints_stay_on_one_page_when_they_fit() {
+    FakeDisplay display;
+    const luma::theme::Palette palette = luma::theme::paletteFor(0);
+    const luma::KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 2, 0, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("ok"));
+    TEST_ASSERT_TRUE(display.hasText("back"));
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 2, 5000, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("ok"));
+    TEST_ASSERT_TRUE(display.hasText("back"));
+}
+
+void test_footer_hints_paginate_when_they_overflow() {
+    FakeDisplay display;
+    const luma::theme::Palette palette = luma::theme::paletteFor(0);
+    const luma::KeyHint hints[] = {{"A", "ONEPAGEONLYLABELXXXX"},
+                                   {"B", "TWOPAGEONLYLABELXXXX"},
+                                   {"C", "THREEPAGEONLYLABELXXX"}};
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 3, 0, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("ONEPAGEONLYLABELXXXX"));
+    TEST_ASSERT_FALSE(display.hasText("TWOPAGEONLYLABELXXXX"));
+    TEST_ASSERT_FALSE(display.hasText("THREEPAGEONLYLABELXXX"));
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 3, 2000, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("ONEPAGEONLYLABELXXXX"));
+    TEST_ASSERT_FALSE(display.hasText("TWOPAGEONLYLABELXXXX"));
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 3, 5000, nullptr);
+    TEST_ASSERT_FALSE(display.hasText("ONEPAGEONLYLABELXXXX"));
+    TEST_ASSERT_TRUE(display.hasText("TWOPAGEONLYLABELXXXX"));
+    TEST_ASSERT_FALSE(display.hasText("THREEPAGEONLYLABELXXX"));
+}
+
+void test_footer_hints_page_break_starts_a_new_page() {
+    FakeDisplay display;
+    const luma::theme::Palette palette = luma::theme::paletteFor(0);
+    const luma::KeyHint hints[] = {{"Ent", "paint"},
+                                   {"Del", "erase"},
+                                   {"Esc", "back"},
+                                   luma::kFooterPageBreak,
+                                   {"C", "color"},
+                                   {"X", "clear"}};
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 6, 0, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("paint"));
+    TEST_ASSERT_TRUE(display.hasText("erase"));
+    TEST_ASSERT_TRUE(display.hasText("back"));
+    TEST_ASSERT_FALSE(display.hasText("color"));
+    TEST_ASSERT_FALSE(display.hasText("clear"));
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 6, 4999, nullptr);
+    TEST_ASSERT_TRUE(display.hasText("paint"));
+    TEST_ASSERT_FALSE(display.hasText("color"));
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 6, 5000, nullptr);
+    TEST_ASSERT_FALSE(display.hasText("paint"));
+    TEST_ASSERT_TRUE(display.hasText("color"));
+    TEST_ASSERT_TRUE(display.hasText("clear"));
+}
+
+void test_footer_swatch_sits_on_the_right() {
+    FakeDisplay display;
+    const luma::theme::Palette palette = luma::theme::paletteFor(0);
+    const luma::KeyHint hints[] = {{"Ent", "ok"}};
+    const luma::Color swatch = luma::theme::kBenihi;
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 1, 0, &swatch);
+
+    TEST_ASSERT_TRUE(display.hasFill({226, 123, 8, 8}, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasText("ok"));
 }
 
 void test_input_manager_dispatches_fake_source() {
@@ -878,11 +979,13 @@ void test_theme_palette_inverts_for_light() {
 void test_app_accent_is_identity_color() {
     luma::SettingsApp settings_app;
     luma::NotesApp notes_app;
+    luma::DotsApp dots_app;
     std::vector<std::string> log;
     RecordingApp extra("extra", "Extra", 'x', log);
 
     TEST_ASSERT_TRUE(luma::colorsEqual(settings_app.accent(), kTsuyukusa));
     TEST_ASSERT_TRUE(luma::colorsEqual(notes_app.accent(), kWakatake));
+    TEST_ASSERT_TRUE(luma::colorsEqual(dots_app.accent(), kYamabuki));
     TEST_ASSERT_TRUE(luma::colorsEqual(extra.accent(), kAccent));
 }
 
@@ -1145,6 +1248,27 @@ void typeText(Luma& luma, FakeInputSource& input, const char* text) {
         input.push(makeText(*cursor));
         luma.update();
     }
+}
+
+void enterDotsApp(Luma& luma, FakeInputSource& input) {
+    input.push(makeAction(InputAction::Down));
+    luma.update();
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
+void enterNewMatrix(Luma& luma, FakeInputSource& input) {
+    enterDotsApp(luma, input);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
+}
+
+void nameAndLeave(Luma& luma, FakeInputSource& input, const char* name) {
+    input.push(makeAction(InputAction::Back));
+    luma.update();
+    typeText(luma, input, name);
+    input.push(makeAction(InputAction::Confirm));
+    luma.update();
 }
 
 void test_notes_round_trips_multiline_text() {
@@ -2699,6 +2823,337 @@ void test_battery_unknown_values_are_not_fabricated() {
     TEST_ASSERT_EQUAL_UINT32(0, sample.unix_utc);
 }
 
+void test_dots_opens_from_launcher_and_list_back_returns() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterDotsApp(harness.luma, harness.input);
+
+    TEST_ASSERT_EQUAL_STRING("dots", harness.luma.currentAppId());
+    TEST_ASSERT_TRUE(harness.display.hasText("DOTS"));
+    TEST_ASSERT_TRUE(harness.display.hasText("New matrix"));
+
+    harness.input.push(makeAction(InputAction::Back));
+    harness.luma.update();
+    TEST_ASSERT_EQUAL_STRING("launcher", harness.luma.currentAppId());
+}
+
+void test_dots_discards_empty_new_matrix() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    TEST_ASSERT_TRUE(harness.display.hasStroke({0, 0, 4, 4}, luma::theme::kGofun));
+
+    harness.input.push(makeAction(InputAction::Back));
+    harness.luma.update();
+    TEST_ASSERT_EQUAL_STRING("dots", harness.luma.currentAppId());
+    TEST_ASSERT_TRUE(harness.display.hasText("New matrix"));
+    TEST_ASSERT_FALSE(harness.display.hasText("Untitled"));
+}
+
+void test_dots_paints_and_delete_does_not_toggle_on_repeat_confirm() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+
+    harness.input.push(makeAction(InputAction::Delete));
+    harness.luma.update();
+    TEST_ASSERT_FALSE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+}
+
+void test_dots_cursor_clamps_at_matrix_edges() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    TEST_ASSERT_TRUE(harness.display.hasStroke({0, 0, 4, 4}, luma::theme::kGofun));
+
+    for (int i = 0; i < 80; ++i) {
+        harness.input.push(makeAction(InputAction::Right));
+        harness.luma.update();
+    }
+    TEST_ASSERT_TRUE(harness.display.hasStroke({236, 0, 4, 4}, luma::theme::kGofun));
+
+    for (int i = 0; i < 80; ++i) {
+        harness.input.push(makeAction(InputAction::Down));
+        harness.luma.update();
+    }
+    TEST_ASSERT_TRUE(harness.display.hasStroke({236, 116, 4, 4}, luma::theme::kGofun));
+
+    harness.input.push(makeAction(InputAction::Left));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasStroke({232, 116, 4, 4}, luma::theme::kGofun));
+}
+
+void test_dots_color_picker_sets_pen_without_painting() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    harness.input.push(makeText('c'));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Right));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_FALSE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+    TEST_ASSERT_FALSE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kAraisyu));
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kAraisyu));
+}
+
+void test_dots_picker_tail_is_fuji_momo_tsutsuji() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    harness.input.push(makeText('c'));
+    harness.luma.update();
+
+    constexpr int kChip = 14;
+    constexpr int kGap = 2;
+    constexpr int kPenCount = 13;
+    const int row_w = kPenCount * kChip + (kPenCount - 1) * kGap;
+    const int row_x = (luma::layout::kWidth - row_w) / 2;
+    const int row_y = 48;
+    const auto chip = [row_x, row_y](int i) {
+        return luma::Rect{row_x + i * (kChip + kGap), row_y, kChip, kChip};
+    };
+
+    TEST_ASSERT_TRUE(harness.display.hasFill(chip(9), luma::theme::kFuji));
+    TEST_ASSERT_TRUE(harness.display.hasFill(chip(10), luma::theme::kMomo));
+    TEST_ASSERT_TRUE(harness.display.hasFill(chip(11), luma::theme::kTsutsuji));
+    TEST_ASSERT_TRUE(harness.display.hasFill(chip(12), luma::theme::kGofun));
+}
+
+void test_dots_picker_back_keeps_pen_and_stays_in_app() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    harness.input.push(makeText('c'));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Right));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Back));
+    harness.luma.update();
+    TEST_ASSERT_EQUAL_STRING("dots", harness.luma.currentAppId());
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+}
+
+void test_dots_clear_dialog_extinguishes_all_lamps() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.input.push(makeText('x'));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasText("Clear?"));
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_FALSE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+    TEST_ASSERT_EQUAL_STRING("dots", harness.luma.currentAppId());
+}
+
+void test_dots_autosaves_and_reloads_named_matrix() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.clock.now = 3000;
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.clock.now = 3500;
+    harness.luma.update();
+
+    char buffer[luma::DotsApp::kCellCount] = {};
+    size_t length = 0;
+    TEST_ASSERT_TRUE(
+        harness.storage.readFile("/apps/dots/00.bin", buffer, sizeof(buffer), length));
+    TEST_ASSERT_EQUAL_UINT(luma::DotsApp::kCellCount, length);
+    TEST_ASSERT_EQUAL_UINT8(1, static_cast<uint8_t>(buffer[0]));
+
+    nameAndLeave(harness.luma, harness.input, "HOME");
+    TEST_ASSERT_TRUE(harness.display.hasText("HOME"));
+
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+}
+
+void test_dots_untitled_collision_becomes_numbered() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Back));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasText("Untitled"));
+
+    harness.input.push(makeAction(InputAction::Down));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Back));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasText("Untitled 2"));
+}
+
+void test_dots_rejects_duplicate_name() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    nameAndLeave(harness.luma, harness.input, "HOME");
+
+    harness.input.push(makeAction(InputAction::Down));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    nameAndLeave(harness.luma, harness.input, "HOME");
+    TEST_ASSERT_TRUE(harness.display.hasText("Name?"));
+    TEST_ASSERT_FALSE(harness.display.hasText("New matrix"));
+}
+
+void test_dots_failed_save_keeps_memory() {
+    LumaHarness<luma::test::ControllableStorage> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.clock.now = 4000;
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    harness.storage.write_succeeds = false;
+    harness.clock.now = 4500;
+    harness.luma.update();
+
+    TEST_ASSERT_TRUE(harness.diagnostics.contains("[ERROR] dots save failed"));
+    TEST_ASSERT_TRUE(harness.display.hasText("SAVE FAIL"));
+    TEST_ASSERT_TRUE(harness.display.hasFill({1, 1, 2, 2}, luma::theme::kBenihi));
+}
+
+void test_dots_list_renames_and_deletes() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    nameAndLeave(harness.luma, harness.input, "HOME");
+
+    harness.input.push(makeText('r'));
+    harness.luma.update();
+    for (int i = 0; i < 8; ++i) {
+        harness.input.push(makeAction(InputAction::Delete));
+        harness.luma.update();
+    }
+    typeText(harness.luma, harness.input, "SIGN");
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_TRUE(harness.display.hasText("SIGN"));
+    TEST_ASSERT_FALSE(harness.display.hasText("HOME"));
+
+    harness.input.push(makeAction(InputAction::Delete));
+    harness.luma.update();
+    harness.input.push(makeAction(InputAction::Confirm));
+    harness.luma.update();
+    TEST_ASSERT_FALSE(harness.display.hasText("SIGN"));
+    TEST_ASSERT_TRUE(harness.display.hasText("New matrix"));
+}
+
+void test_dots_full_blocks_new() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterDotsApp(harness.luma, harness.input);
+    for (int i = 0; i < luma::DotsApp::kMaxMatrices; ++i) {
+        harness.input.push(makeAction(InputAction::Confirm));
+        harness.luma.update();
+        harness.input.push(makeAction(InputAction::Confirm));
+        harness.luma.update();
+        char name[4] = {static_cast<char>('A' + i), '\0'};
+        nameAndLeave(harness.luma, harness.input, name);
+        for (int step = 0; step < i + 1; ++step) {
+            harness.input.push(makeAction(InputAction::Down));
+            harness.luma.update();
+        }
+    }
+    TEST_ASSERT_TRUE(harness.display.hasText("FULL"));
+}
+
+void test_dots_light_theme_keeps_kuro_matrix_field() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    harness.settings.setTheme(1);
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    TEST_ASSERT_TRUE(harness.display.hasFill(luma::layout::kContentFooterOnly, luma::theme::kKuro));
+    TEST_ASSERT_TRUE(harness.display.hasFill(luma::layout::kFooter, luma::theme::kGofun));
+}
+
+void test_dots_paint_does_not_cover_footer() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+    TEST_ASSERT_TRUE(harness.display.hasFill(luma::layout::kContentFooterOnly, luma::theme::kKuro));
+    TEST_ASSERT_TRUE(harness.display.hasText("Ent"));
+    TEST_ASSERT_FALSE(harness.display.hasFill({0, 120, 4, 4}, luma::theme::kKuro));
+}
+
+void test_dots_paint_footer_keeps_back_with_paint_and_erase() {
+    LumaHarness<> harness;
+    harness.luma.begin();
+    enterLauncher(harness.luma, harness.clock);
+    enterNewMatrix(harness.luma, harness.input);
+
+    TEST_ASSERT_TRUE(harness.display.hasText("paint"));
+    TEST_ASSERT_TRUE(harness.display.hasText("erase"));
+    TEST_ASSERT_TRUE(harness.display.hasText("back"));
+    TEST_ASSERT_FALSE(harness.display.hasText("color"));
+    TEST_ASSERT_FALSE(harness.display.hasText("clear"));
+
+    harness.clock.now = 5000;
+    harness.luma.update();
+    TEST_ASSERT_FALSE(harness.display.hasText("paint"));
+    TEST_ASSERT_TRUE(harness.display.hasText("color"));
+    TEST_ASSERT_TRUE(harness.display.hasText("clear"));
+}
+
 void setUp() {}
 void tearDown() {}
 
@@ -2720,6 +3175,11 @@ int main() {
     RUN_TEST(test_launcher_navigation_stays_in_bounds);
     RUN_TEST(test_launcher_header_updates_when_minute_changes);
     RUN_TEST(test_ui_dialog_draws_title_and_body);
+    RUN_TEST(test_theme_includes_spectrum_and_brand_paint_colors);
+    RUN_TEST(test_footer_hints_stay_on_one_page_when_they_fit);
+    RUN_TEST(test_footer_hints_paginate_when_they_overflow);
+    RUN_TEST(test_footer_hints_page_break_starts_a_new_page);
+    RUN_TEST(test_footer_swatch_sits_on_the_right);
     RUN_TEST(test_input_manager_dispatches_fake_source);
     RUN_TEST(test_in_memory_storage_round_trips_notes);
     RUN_TEST(test_file_storage_persists_across_instances);
@@ -2755,6 +3215,23 @@ int main() {
     RUN_TEST(test_notes_deletes_after_dialog);
     RUN_TEST(test_notes_list_indexes_and_scrolls);
     RUN_TEST(test_notes_full_blocks_new);
+    RUN_TEST(test_dots_opens_from_launcher_and_list_back_returns);
+    RUN_TEST(test_dots_discards_empty_new_matrix);
+    RUN_TEST(test_dots_paints_and_delete_does_not_toggle_on_repeat_confirm);
+    RUN_TEST(test_dots_cursor_clamps_at_matrix_edges);
+    RUN_TEST(test_dots_color_picker_sets_pen_without_painting);
+    RUN_TEST(test_dots_picker_tail_is_fuji_momo_tsutsuji);
+    RUN_TEST(test_dots_picker_back_keeps_pen_and_stays_in_app);
+    RUN_TEST(test_dots_clear_dialog_extinguishes_all_lamps);
+    RUN_TEST(test_dots_autosaves_and_reloads_named_matrix);
+    RUN_TEST(test_dots_untitled_collision_becomes_numbered);
+    RUN_TEST(test_dots_rejects_duplicate_name);
+    RUN_TEST(test_dots_failed_save_keeps_memory);
+    RUN_TEST(test_dots_list_renames_and_deletes);
+    RUN_TEST(test_dots_full_blocks_new);
+    RUN_TEST(test_dots_light_theme_keeps_kuro_matrix_field);
+    RUN_TEST(test_dots_paint_does_not_cover_footer);
+    RUN_TEST(test_dots_paint_footer_keeps_back_with_paint_and_erase);
     RUN_TEST(test_host_audio_emits_event_log);
     RUN_TEST(test_civil_time_dst_spring_forward_new_york);
     RUN_TEST(test_clock_unset_renders_invalid_until_ntp);

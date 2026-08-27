@@ -824,7 +824,7 @@ void SettingsApp::drawSplitPane() {
         }
         drawBatteryHistory(renderer.surface(), palette, chart, history, n);
         const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 2);
+        drawStandardFooter(*context_, renderer, hints, 2);
         renderer.endFrame();
         return;
     }
@@ -866,7 +866,7 @@ void SettingsApp::drawSplitPane() {
     }
 
     const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 2);
+    drawStandardFooter(*context_, renderer, hints, 2);
     renderer.endFrame();
 }
 
@@ -960,7 +960,7 @@ void SettingsApp::drawWifiEditor() {
         const int cursor_x = pass_card.x + text_pad + font::textWidth(masked, 1) + kCursorGap;
         renderer.surface().fillRect({cursor_x, text_y, kCursorW, font::kGlyphHeight}, palette.accent);
         const KeyHint hints[] = {{"Ent", "join"}, {"Del", "bk"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 3);
+        drawStandardFooter(*context_, renderer, hints, 3);
         renderer.endFrame();
         return;
     }
@@ -995,7 +995,7 @@ void SettingsApp::drawWifiEditor() {
             row_y += kRowBoxHeight + kInnerCardGap;
         }
         const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 2);
+        drawStandardFooter(*context_, renderer, hints, 2);
         renderer.endFrame();
         return;
     }
@@ -1017,7 +1017,7 @@ void SettingsApp::drawWifiEditor() {
             }
         }
         const KeyHint hints[] = {{"Ent", "ok"}, {"Del", "forget"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 3);
+        drawStandardFooter(*context_, renderer, hints, 3);
         renderer.endFrame();
         return;
     }
@@ -1053,7 +1053,7 @@ void SettingsApp::drawWifiEditor() {
         row_y += kRowBoxHeight + kInnerCardGap;
     }
     const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 2);
+    drawStandardFooter(*context_, renderer, hints, 2);
     renderer.endFrame();
 }
 
@@ -1123,7 +1123,7 @@ void SettingsApp::drawTimeZoneEditor() {
     }
 
     const KeyHint hints[] = {{"Ent", "ok"}, {"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 2);
+    drawStandardFooter(*context_, renderer, hints, 2);
     renderer.endFrame();
 }
 
@@ -1185,7 +1185,7 @@ void SettingsApp::drawAboutEditor() {
     }
 
     const KeyHint hints[] = {{"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 1);
+    drawStandardFooter(*context_, renderer, hints, 1);
     renderer.endFrame();
 }
 

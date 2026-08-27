@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "luma/apps/dots-app.h"
 #include "luma/apps/launcher-app.h"
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
@@ -59,6 +60,7 @@ private:
     LauncherApp launcher_;
     SettingsApp settings_app_;
     NotesApp notes_app_;
+    DotsApp dots_app_;
     bool booting_ = false;
     uint32_t boot_started_ms_ = 0;
     uint8_t last_header_minute_ = 254;
