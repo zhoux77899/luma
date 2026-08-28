@@ -196,6 +196,10 @@ _Avoid_: screen pixel, lamp pixel
 The lit drawing of one LED cell: a center mark with a Kuro gutter.
 _Avoid_: circle API, bitmap cell
 
+**Matrix cursor**:
+The current LED cell in the DOTS paint view.
+_Avoid_: canvas cursor, pointer, caret
+
 **Pen color**:
 The palette color Confirm paints onto the current LED cell. Off is not a Pen color; Delete extinguishes.
 _Avoid_: brush, ink, Theme preference

@@ -618,6 +618,20 @@ void test_footer_swatch_sits_on_the_right() {
     TEST_ASSERT_TRUE(display.hasText("ok"));
 }
 
+void test_footer_trailing_sits_left_of_swatch() {
+    FakeDisplay display;
+    const luma::theme::Palette palette = luma::theme::paletteFor(0);
+    const luma::KeyHint hints[] = {{"Ent", "ok"}};
+    const luma::Color swatch = luma::theme::kBenihi;
+
+    display.beginFrame();
+    luma::drawFooterHints(display, palette, hints, 1, 0, &swatch, "0,0");
+
+    TEST_ASSERT_TRUE(display.hasFill({226, 123, 8, 8}, luma::theme::kBenihi));
+    TEST_ASSERT_TRUE(display.hasText("0,0"));
+    TEST_ASSERT_TRUE(display.hasText("ok"));
+}
+
 void test_input_manager_dispatches_fake_source() {
     FakeInputSource source;
     FakeDiagnostics diagnostics;
@@ -2892,10 +2906,12 @@ void test_dots_cursor_clamps_at_matrix_edges() {
         harness.luma.update();
     }
     TEST_ASSERT_TRUE(harness.display.hasStroke({236, 116, 4, 4}, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(harness.display.hasText("59,29"));
 
     harness.input.push(makeAction(InputAction::Left));
     harness.luma.update();
     TEST_ASSERT_TRUE(harness.display.hasStroke({232, 116, 4, 4}, luma::theme::kGofun));
+    TEST_ASSERT_TRUE(harness.display.hasText("58,29"));
 }
 
 void test_dots_color_picker_sets_pen_without_painting() {
@@ -2941,6 +2957,7 @@ void test_dots_picker_tail_is_fuji_momo_tsutsuji() {
     TEST_ASSERT_TRUE(harness.display.hasFill(chip(10), luma::theme::kMomo));
     TEST_ASSERT_TRUE(harness.display.hasFill(chip(11), luma::theme::kTsutsuji));
     TEST_ASSERT_TRUE(harness.display.hasFill(chip(12), luma::theme::kGofun));
+    TEST_ASSERT_FALSE(harness.display.hasText("0,0"));
 }
 
 void test_dots_picker_back_keeps_pen_and_stays_in_app() {
@@ -3147,6 +3164,7 @@ void test_dots_paint_footer_keeps_back_with_paint_and_erase() {
     TEST_ASSERT_TRUE(harness.display.hasText("paint"));
     TEST_ASSERT_TRUE(harness.display.hasText("erase"));
     TEST_ASSERT_TRUE(harness.display.hasText("back"));
+    TEST_ASSERT_TRUE(harness.display.hasText("0,0"));
     TEST_ASSERT_FALSE(harness.display.hasText("color"));
     TEST_ASSERT_FALSE(harness.display.hasText("clear"));
 
@@ -3183,6 +3201,7 @@ int main() {
     RUN_TEST(test_footer_hints_paginate_when_they_overflow);
     RUN_TEST(test_footer_hints_page_break_starts_a_new_page);
     RUN_TEST(test_footer_swatch_sits_on_the_right);
+    RUN_TEST(test_footer_trailing_sits_left_of_swatch);
     RUN_TEST(test_input_manager_dispatches_fake_source);
     RUN_TEST(test_in_memory_storage_round_trips_notes);
     RUN_TEST(test_file_storage_persists_across_instances);

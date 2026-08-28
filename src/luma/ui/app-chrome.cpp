@@ -20,9 +20,9 @@ void drawStandardHeader(AppContext& context, UiRenderer& renderer, const char* t
 }
 
 void drawStandardFooter(AppContext& context, UiRenderer& renderer, const KeyHint* hints, int count,
-                        const Color* swatch) {
+                        const Color* swatch, const char* trailing) {
     drawFooterHints(renderer.surface(), renderer.palette(), hints, count, context.clock().millis(),
-                    swatch);
+                    swatch, trailing);
 }
 
 }  // namespace luma

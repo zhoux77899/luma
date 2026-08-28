@@ -50,7 +50,7 @@ constexpr KeyHint kFooterPageBreak{nullptr, nullptr};
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
                      int count);
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
-                     int count, uint32_t now_ms, const Color* swatch);
+                     int count, uint32_t now_ms, const Color* swatch, const char* trailing = nullptr);
 void drawOverflowScrollbar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
                            int count, int start, int visible);
 void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,

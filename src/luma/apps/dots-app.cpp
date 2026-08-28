@@ -48,6 +48,10 @@ Color penColor(uint8_t index) {
     return kPens[index - 1];
 }
 
+void formatCursorCoord(int x, int y, char* out, size_t out_size) {
+    std::snprintf(out, out_size, "%d,%d", x, y);
+}
+
 bool isUntitledName(const char* name) { return name != nullptr && std::strcmp(name, "Untitled") == 0; }
 
 }  // namespace
@@ -824,9 +828,11 @@ void DotsApp::drawPaint() {
     }
     const Rect cursor{cursor_x_ * kCellPixels, cursor_y_ * kCellPixels, kCellPixels, kCellPixels};
     renderer.surface().drawRect(cursor, theme::kGofun);
+    char coord[8] = {};
+    formatCursorCoord(cursor_x_, cursor_y_, coord, sizeof(coord));
     if (save_failed_) {
         const KeyHint status[] = {{nullptr, "SAVE FAIL"}};
-        drawStandardFooter(*context_, renderer, status, 1);
+        drawStandardFooter(*context_, renderer, status, 1, nullptr, coord);
     } else {
         const Color swatch = penColor(pen_index_);
         const KeyHint hints[] = {{"Ent", "paint"},
@@ -835,7 +841,7 @@ void DotsApp::drawPaint() {
                                  kFooterPageBreak,
                                  {"C", "color"},
                                  {"X", "clear"}};
-        drawStandardFooter(*context_, renderer, hints, 6, &swatch);
+        drawStandardFooter(*context_, renderer, hints, 6, &swatch, coord);
     }
     renderer.endFrame();
 }

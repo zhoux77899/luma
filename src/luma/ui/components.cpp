@@ -307,10 +307,21 @@ int footerGroupWidth(const KeyHint& hint) {
     return width;
 }
 
-int footerHintSpan(const Color* swatch) {
+int trailingReserveWidth(const char* trailing) {
+    if (trailing == nullptr || trailing[0] == '\0') {
+        return 0;
+    }
+    return font::textWidth("59,29", 1);
+}
+
+int footerHintSpan(const Color* swatch, const char* trailing) {
     int right = layout::kWidth - layout::kChromeInset;
     if (swatch != nullptr) {
         right -= kSwatchSize + kGroupGap;
+    }
+    const int reserved = trailingReserveWidth(trailing);
+    if (reserved > 0) {
+        right -= reserved + kGroupGap;
     }
     return right - layout::kChromeInset;
 }
@@ -340,18 +351,25 @@ void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, con
 }
 
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
-                     int count, uint32_t now_ms, const Color* swatch) {
+                     int count, uint32_t now_ms, const Color* swatch, const char* trailing) {
     display.fillRect(layout::kFooter, palette.canvas);
+    int cluster_right = layout::kWidth - layout::kChromeInset;
     if (swatch != nullptr) {
-        const int swatch_x = layout::kWidth - layout::kChromeInset - kSwatchSize;
+        const int swatch_x = cluster_right - kSwatchSize;
         const int swatch_y = layout::kFooter.y + (layout::kFooterHeight - kSwatchSize) / 2;
         display.fillRect({swatch_x, swatch_y, kSwatchSize, kSwatchSize}, *swatch);
+        cluster_right = swatch_x - kGroupGap;
+    }
+    const int text_y = centeredY(layout::kFooter.y, layout::kFooter.h);
+    if (trailing != nullptr && trailing[0] != '\0') {
+        const int text_w = font::textWidth(trailing, 1);
+        display.drawText({cluster_right - text_w, text_y}, {palette.secondary_text, 1}, trailing);
     }
     if (hints == nullptr || count <= 0) {
         return;
     }
 
-    const int available = footerHintSpan(swatch);
+    const int available = footerHintSpan(swatch, trailing);
     int page_starts[16] = {};
     int page_ends[16] = {};
     int page_count = 0;
@@ -400,7 +418,6 @@ void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, con
 
     int x = layout::kChromeInset;
     const int chip_y = layout::kFooter.y + (layout::kFooterHeight - kChipHeight) / 2;
-    const int text_y = centeredY(layout::kFooter.y, layout::kFooter.h);
     for (int i = page_start; i < page_end; ++i) {
         if (isFooterPageBreak(hints[i])) {
             continue;
