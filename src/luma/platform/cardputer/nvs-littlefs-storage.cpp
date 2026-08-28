@@ -67,6 +67,10 @@ bool NvsLittleFsStorage::begin() {
         emitError("mkdir /apps/notes failed");
         return false;
     }
+    if (!LittleFS.exists("/apps/dots") && !LittleFS.mkdir("/apps/dots")) {
+        emitError("mkdir /apps/dots failed");
+        return false;
+    }
 
     diagnostics_.emit("STORAGE", "ready");
     return true;

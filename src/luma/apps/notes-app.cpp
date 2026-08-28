@@ -728,13 +728,13 @@ void NotesApp::drawList() {
 
     if (count >= kMaxNotes && new_selected) {
         const KeyHint status[] = {{nullptr, "FULL"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, status, 2);
+        drawStandardFooter(*context_, renderer, status, 2);
     } else if (new_selected) {
         const KeyHint hints[] = {{"Ent", "new"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 2);
+        drawStandardFooter(*context_, renderer, hints, 2);
     } else {
         const KeyHint hints[] = {{"Ent", "open"}, {"Del", "delete"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 3);
+        drawStandardFooter(*context_, renderer, hints, 3);
     }
     renderer.endFrame();
 }
@@ -795,13 +795,13 @@ void NotesApp::drawEditor() {
 
     if (save_failed_) {
         const KeyHint status[] = {{nullptr, "SAVE FAIL"}};
-        drawStandardFooter(renderer, status, 1);
+        drawStandardFooter(*context_, renderer, status, 1);
     } else if (length_ >= kMaxLength) {
         const KeyHint status[] = {{nullptr, "FULL"}};
-        drawStandardFooter(renderer, status, 1);
+        drawStandardFooter(*context_, renderer, status, 1);
     } else {
         const KeyHint hints[] = {{"Ent", "line"}, {"Del", "bk"}, {"Esc", "back"}};
-        drawStandardFooter(renderer, hints, 3);
+        drawStandardFooter(*context_, renderer, hints, 3);
     }
     renderer.endFrame();
 }
@@ -816,7 +816,7 @@ void NotesApp::drawDeleteDialog() {
         (delete_slot_ >= 0 && titles_[delete_slot_][0] != '\0') ? titles_[delete_slot_] : "Untitled";
     drawDialog(renderer.surface(), palette, "Delete?", title);
     const KeyHint hints[] = {{"Ent", "delete"}, {"Esc", "cancel"}};
-    drawStandardFooter(renderer, hints, 2);
+    drawStandardFooter(*context_, renderer, hints, 2);
     renderer.endFrame();
 }
 

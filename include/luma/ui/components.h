@@ -37,14 +37,20 @@ void drawList(DisplaySurface& display, const theme::Palette& palette, const char
               int count, int selected);
 void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
                 const char* body);
+void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
+                const char* body, Rect content);
 
 struct KeyHint {
     const char* key;
     const char* label;
 };
 
+constexpr KeyHint kFooterPageBreak{nullptr, nullptr};
+
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
                      int count);
+void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
+                     int count, uint32_t now_ms, const Color* swatch, const char* trailing = nullptr);
 void drawOverflowScrollbar(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
                            int count, int start, int visible);
 void drawAppCard(DisplaySurface& display, const theme::Palette& palette, int column, int row,

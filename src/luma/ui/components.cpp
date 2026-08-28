@@ -265,10 +265,14 @@ void drawList(DisplaySurface& display, const theme::Palette& palette, const char
 
 void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
                 const char* body) {
+    drawDialog(display, palette, title, body, layout::kContentBoth);
+}
+
+void drawDialog(DisplaySurface& display, const theme::Palette& palette, const char* title,
+                const char* body, Rect content) {
     constexpr int kBoxW = 180;
     constexpr int kBoxH = 75;
-    const int box_y =
-        layout::kContentBoth.y + (layout::kContentBoth.h - kBoxH) / 2;
+    const int box_y = content.y + (content.h - kBoxH) / 2;
     const Rect box{(layout::kWidth - kBoxW) / 2, box_y, kBoxW, kBoxH};
     display.fillRoundRect(box, layout::kCardRadius, palette.canvas);
     display.drawRoundRect(box, layout::kCardRadius, palette.accent);
@@ -278,38 +282,150 @@ void drawDialog(DisplaySurface& display, const theme::Palette& palette, const ch
                      body != nullptr ? body : "");
 }
 
+namespace {
+
+constexpr int kChipPadX = 2;
+constexpr int kChipRadius = 2;
+constexpr int kChipToLabel = 3;
+constexpr int kGroupGap = 8;
+constexpr int kChipHeight = 13;
+constexpr int kSwatchSize = 8;
+constexpr uint32_t kFooterPageMs = 5000;
+
+bool isFooterPageBreak(const KeyHint& hint) {
+    return hint.key == nullptr && hint.label == nullptr;
+}
+
+int footerGroupWidth(const KeyHint& hint) {
+    int width = 0;
+    if (hint.key != nullptr && hint.key[0] != '\0') {
+        width += font::textWidth(hint.key, 1) + 2 * kChipPadX + kChipToLabel;
+    }
+    if (hint.label != nullptr && hint.label[0] != '\0') {
+        width += font::textWidth(hint.label, 1);
+    }
+    return width;
+}
+
+int trailingReserveWidth(const char* trailing) {
+    if (trailing == nullptr || trailing[0] == '\0') {
+        return 0;
+    }
+    return font::textWidth("59,29", 1);
+}
+
+int footerHintSpan(const Color* swatch, const char* trailing) {
+    int right = layout::kWidth - layout::kChromeInset;
+    if (swatch != nullptr) {
+        right -= kSwatchSize + kGroupGap;
+    }
+    const int reserved = trailingReserveWidth(trailing);
+    if (reserved > 0) {
+        right -= reserved + kGroupGap;
+    }
+    return right - layout::kChromeInset;
+}
+
+void drawFooterGroup(DisplaySurface& display, const theme::Palette& palette, const KeyHint& hint,
+                     int& x, int chip_y, int text_y) {
+    const char* key = hint.key;
+    const char* label = hint.label != nullptr ? hint.label : "";
+    if (key != nullptr && key[0] != '\0') {
+        const int key_w = font::textWidth(key, 1);
+        const Rect chip{x, chip_y, key_w + 2 * kChipPadX, kChipHeight};
+        display.fillRoundRect(chip, kChipRadius, theme::kAomidori);
+        display.drawText({x + kChipPadX, text_y}, {palette.primary_text, 1}, key);
+        x += chip.w + kChipToLabel;
+    }
+    if (label[0] != '\0') {
+        display.drawText({x, text_y}, {palette.secondary_text, 1}, label);
+        x += font::textWidth(label, 1);
+    }
+}
+
+}  // namespace
+
 void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
                      int count) {
+    drawFooterHints(display, palette, hints, count, 0, nullptr);
+}
+
+void drawFooterHints(DisplaySurface& display, const theme::Palette& palette, const KeyHint* hints,
+                     int count, uint32_t now_ms, const Color* swatch, const char* trailing) {
     display.fillRect(layout::kFooter, palette.canvas);
+    int cluster_right = layout::kWidth - layout::kChromeInset;
+    if (swatch != nullptr) {
+        const int swatch_x = cluster_right - kSwatchSize;
+        const int swatch_y = layout::kFooter.y + (layout::kFooterHeight - kSwatchSize) / 2;
+        display.fillRect({swatch_x, swatch_y, kSwatchSize, kSwatchSize}, *swatch);
+        cluster_right = swatch_x - kGroupGap;
+    }
+    const int text_y = centeredY(layout::kFooter.y, layout::kFooter.h);
+    if (trailing != nullptr && trailing[0] != '\0') {
+        const int text_w = font::textWidth(trailing, 1);
+        display.drawText({cluster_right - text_w, text_y}, {palette.secondary_text, 1}, trailing);
+    }
     if (hints == nullptr || count <= 0) {
         return;
     }
 
-    constexpr int kChipPadX = 2;
-    constexpr int kChipRadius = 2;
-    constexpr int kChipToLabel = 3;
-    constexpr int kGroupGap = 8;
-    constexpr int kChipHeight = 13;
+    const int available = footerHintSpan(swatch, trailing);
+    int page_starts[16] = {};
+    int page_ends[16] = {};
+    int page_count = 0;
+    int start = 0;
+    while (start < count && page_count < 16) {
+        while (start < count && isFooterPageBreak(hints[start])) {
+            ++start;
+        }
+        if (start >= count) {
+            break;
+        }
+        int used = 0;
+        int end = start;
+        bool stopped_on_break = false;
+        while (end < count) {
+            if (isFooterPageBreak(hints[end])) {
+                stopped_on_break = true;
+                break;
+            }
+            const int width = footerGroupWidth(hints[end]);
+            const int extra = end > start ? kGroupGap : 0;
+            if (end > start && used + extra + width > available) {
+                break;
+            }
+            used += extra + width;
+            ++end;
+        }
+        if (end == start && !stopped_on_break) {
+            ++end;
+        }
+        if (end > start) {
+            page_starts[page_count] = start;
+            page_ends[page_count] = end;
+            ++page_count;
+        }
+        start = stopped_on_break ? end + 1 : end;
+    }
+    if (page_count == 0) {
+        return;
+    }
+
+    const int page = page_count <= 1 ? 0 : static_cast<int>((now_ms / kFooterPageMs) %
+                                                            static_cast<uint32_t>(page_count));
+    const int page_start = page_starts[page];
+    const int page_end = page_ends[page];
 
     int x = layout::kChromeInset;
     const int chip_y = layout::kFooter.y + (layout::kFooterHeight - kChipHeight) / 2;
-    const int text_y = centeredY(layout::kFooter.y, layout::kFooter.h);
-
-    for (int i = 0; i < count; ++i) {
-        const char* key = hints[i].key;
-        const char* label = hints[i].label != nullptr ? hints[i].label : "";
-        if (key != nullptr && key[0] != '\0') {
-            const int key_w = font::textWidth(key, 1);
-            const Rect chip{x, chip_y, key_w + 2 * kChipPadX, kChipHeight};
-            display.fillRoundRect(chip, kChipRadius, theme::kAomidori);
-            display.drawText({x + kChipPadX, text_y}, {palette.primary_text, 1}, key);
-            x += chip.w + kChipToLabel;
+    for (int i = page_start; i < page_end; ++i) {
+        if (isFooterPageBreak(hints[i])) {
+            continue;
         }
-        if (label[0] != '\0') {
-            display.drawText({x, text_y}, {palette.secondary_text, 1}, label);
-            x += font::textWidth(label, 1);
+        if (i > page_start) {
+            x += kGroupGap;
         }
-        x += kGroupGap;
+        drawFooterGroup(display, palette, hints[i], x, chip_y, text_y);
     }
 }
 

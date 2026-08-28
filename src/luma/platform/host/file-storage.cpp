@@ -130,6 +130,9 @@ bool FileStorage::begin() {
     if (!ensureDirectory(join("apps/notes").c_str())) {
         return false;
     }
+    if (!ensureDirectory(join("apps/dots").c_str())) {
+        return false;
+    }
     return true;
 }
 

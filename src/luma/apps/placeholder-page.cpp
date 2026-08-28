@@ -18,7 +18,7 @@ void drawPlaceholderPage(AppContext& context, const char* title) {
     const char* items[] = {"Coming soon"};
     drawList(renderer.surface(), palette, items, 1, 0);
     const KeyHint hints[] = {{"Esc", "back"}};
-    drawStandardFooter(renderer, hints, 1);
+    drawStandardFooter(context, renderer, hints, 1);
     renderer.endFrame();
 }
 
