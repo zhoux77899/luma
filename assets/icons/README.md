@@ -8,3 +8,11 @@ slash. Lock / lock-open mark credential presence on Saved and Scan
 rows. Regenerate with `python tools/gen-wifi-icons.py`. The committed
 bitmaps live in `src/luma/assets/wifi-icons.cpp` and are painted at
 runtime with Theme `primary_text` / `secondary_text`.
+
+# About GitHub Octocat
+
+12 x 12 one-bit Octocat silhouette for the Settings About Repository
+card. Two empty rows stay on top. Regenerate with
+`python tools/gen-github-icon.py`. The committed bitmap lives in
+`src/luma/assets/github-icon.cpp` and is painted with Theme
+`primary_text`.

@@ -16,6 +16,7 @@
 #include "luma/core/time-zone.h"
 #include "luma/core/wifi-radio.h"
 #include "luma/assets/battery-icons.h"
+#include "luma/assets/github-icon.h"
 #include "luma/assets/wifi-icons.h"
 #include "luma/luma.h"
 #include "luma/platform/host/host-audio-adapter.h"
@@ -1031,6 +1032,8 @@ void test_settings_opens_about_with_build_identity() {
     TEST_ASSERT_TRUE(display.hasText("Cardputer ADV"));
     TEST_ASSERT_TRUE(display.hasText("Repository"));
     TEST_ASSERT_TRUE(display.hasText(LUMA_REPOSITORY));
+    TEST_ASSERT_TRUE(display.hasMono(luma::assets::kGithubIcon,
+                                    luma::theme::paletteFor(settings.theme()).primary_text));
     TEST_ASSERT_FALSE(display.hasText("ABOUT"));
     TEST_ASSERT_FALSE(display.hasText("native"));
     TEST_ASSERT_FALSE(display.hasText("MIT"));

@@ -1,5 +1,6 @@
 #include "luma/apps/settings-app.h"
 
+#include "luma/assets/github-icon.h"
 #include "luma/assets/wifi-icons.h"
 #include "luma/core/app-context.h"
 #include "luma/core/battery.h"
@@ -39,6 +40,7 @@ constexpr int kOuterPad = 3;
 constexpr int kInnerCardHeight = 14;
 constexpr int kInnerCardGap = 2;
 constexpr int kRowBoxHeight = 14;
+constexpr int kRepositoryCardHeight = 3 * kRowBoxHeight + 2 * kInnerCardGap;
 constexpr int kBarHeight = 4;
 constexpr int kBarCardHeight = 22;
 constexpr int kCardPad = 3;
@@ -149,6 +151,28 @@ void drawEditorRow(DisplaySurface& display, const theme::Palette& palette, Rect 
         const int value_x = bounds.x + bounds.w - 4 - font::textWidth(value, 1);
         display.drawText({value_x, centeredTextY(bounds.y, bounds.h)}, {palette.primary_text, 1},
                          value);
+    }
+}
+
+void drawRepositoryCard(DisplaySurface& display, const theme::Palette& palette, Rect bounds,
+                        const char* repository, bool selected) {
+    drawDetailCard(display, palette, bounds, selected);
+
+    display.drawText({bounds.x + 4, centeredTextY(bounds.y, kRowBoxHeight)},
+                     {selected ? palette.primary_text : palette.secondary_text, 1}, "Repository");
+
+    const int icon_y =
+        bounds.y + kRowBoxHeight + kInnerCardGap + (kRowBoxHeight - assets::kGithubIconSize) / 2;
+    const int icon_x = bounds.x + (bounds.w - assets::kGithubIconSize) / 2;
+    display.drawMonoBitmap({icon_x, icon_y}, assets::kGithubIconSize, assets::kGithubIconSize,
+                           assets::kGithubIcon, palette.primary_text);
+
+    if (repository != nullptr && repository[0] != '\0') {
+        const int name_w = font::textWidth(repository, 1);
+        const int name_x = bounds.x + (bounds.w - name_w) / 2;
+        const int name_y =
+            centeredTextY(bounds.y + 2 * (kRowBoxHeight + kInnerCardGap), kRowBoxHeight);
+        display.drawText({name_x, name_y}, {palette.primary_text, 1}, repository);
     }
 }
 
@@ -1176,13 +1200,15 @@ void SettingsApp::drawAboutEditor() {
     const int detail_x = right_x + kOuterPad;
     const int detail_w = right_w - 2 * kOuterPad;
     int row_y = outer_y + kOuterPad;
-    const char* labels[3] = {"Version", "Model", "Repository"};
-    const char* values[3] = {LUMA_VERSION, LUMA_HARDWARE, LUMA_REPOSITORY};
-    for (int i = 0; i < 3; ++i) {
+    const char* labels[2] = {"Version", "Model"};
+    const char* values[2] = {LUMA_VERSION, LUMA_HARDWARE};
+    for (int i = 0; i < 2; ++i) {
         const Rect row{detail_x, row_y, detail_w, kRowBoxHeight};
         drawEditorRow(renderer.surface(), palette, row, labels[i], values[i], i == about_row_);
         row_y += kRowBoxHeight + kInnerCardGap;
     }
+    const Rect repository{detail_x, row_y, detail_w, kRepositoryCardHeight};
+    drawRepositoryCard(renderer.surface(), palette, repository, LUMA_REPOSITORY, about_row_ == 2);
 
     const KeyHint hints[] = {{"Esc", "back"}};
     drawStandardFooter(*context_, renderer, hints, 1);
