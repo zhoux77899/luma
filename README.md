@@ -228,9 +228,19 @@ cd build/sdl-preview
 ./luma-sdl-preview
 ```
 
-The preview window is 960 x 540 with a fixed 240 x 135 logical canvas and integer 4x
+The preview window is 960 x 540 with a fixed 240 x 135 Preview canvas and integer 4x
 nearest-neighbor scaling. Arrow keys, Enter, Escape, Backspace/Delete, Page Up/Page Down,
 and printable characters map to `InputFrame` values.
+
+Windows and macOS attach a native File Preview menu bar with Copy Screenshot and
+Save Screenshot…. Linux reserves a Preview menu strip at the top of the client for the
+same File commands and uses a taller default window so the canvas stays 4x. A Preview
+screenshot is the current integer-scaled, brightness-presented canvas only: no letterbox
+and no menu chrome.
+
+Ctrl/Cmd+Shift+C copies a Preview screenshot to the clipboard. Ctrl/Cmd+Shift+S opens
+Save As as PNG, defaulting to `docs/user-manual/assets` at the repository root with a
+`luma-preview-YYYYMMDD-HHMMSS.png` name. Those shortcuts do not become `InputFrame` values.
 
 ## Project layout
 

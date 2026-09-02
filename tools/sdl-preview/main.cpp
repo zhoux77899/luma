@@ -1,3 +1,5 @@
+#include "preview-actions.h"
+#include "preview-host.h"
 #include "sdl-audio-adapter.h"
 #include "sdl-display-adapter.h"
 #include "sdl-input-adapter.h"
@@ -23,6 +25,7 @@ int main(int, char**) {
     luma::HostDiagnostics diagnostics;
     luma::SdlDisplayAdapter display;
     luma::SdlInputAdapter input;
+    luma::PreviewHost host;
     luma::HostClockAdapter clock;
     luma::HostStorageAdapter storage("data");
     luma::Settings settings;
@@ -36,9 +39,17 @@ int main(int, char**) {
     luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
 
     luma.begin();
+    host.attach(display.window());
+    input.setHost(&host);
 
     while (!input.quitRequested()) {
         luma.update();
+        host.pump();
+        luma::PreviewCommand command = input.takeCommand();
+        if (command == luma::PreviewCommand::None) {
+            command = host.takeCommand();
+        }
+        luma::runPreviewCommand(command, display);
         display.endFrame();
         SDL_Delay(16);
     }

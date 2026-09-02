@@ -224,6 +224,22 @@ _Avoid_: mixer, soundtrack, speaker API
 The host-side view of the same Apps. Secondary validation, not a second product.
 _Avoid_: emulator, simulator, PC firmware
 
+**Preview canvas**:
+The 240×135 logical DisplaySurface buffer the SDL preview presents. It is the same pixel grid as Cardputer ADV.
+_Avoid_: simulated screen, emulator framebuffer, host window
+
+**Preview screenshot**:
+A capture of the current integer-scaled, brightness-presented Preview canvas, without letterbox or menu chrome.
+_Avoid_: window screenshot, full-window capture, device dump
+
+**Preview menu bar**:
+The native OS File menu on the Windows or macOS SDL preview window.
+_Avoid_: in-window menu, application shell, toolbar
+
+**Preview menu strip**:
+The Linux-only in-window File strip reserved at the top of the SDL preview client. It is not part of a Preview screenshot.
+_Avoid_: Preview menu bar (on Linux), title bar, overlay HUD
+
 **Flash package**:
 The zip of split Cardputer ADV flash images and their burn metadata.
 _Avoid_: firmware zip, segmented archive
