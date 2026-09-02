@@ -1,12 +1,12 @@
-# Luma
+# LUMA
 
-Luma is the firmware product that runs on the M5Stack Cardputer ADV.
+LUMA is the firmware product that runs on the M5Stack Cardputer ADV.
 
 ## Language
 
-**Luma**:
+**LUMA**:
 The firmware product that runs on Cardputer ADV, and the coordinator that boots the device and runs each frame.
-_Avoid_: OS, system, shell
+_Avoid_: Luma (as the product spelling), OS, system, shell
 
 **Core**:
 The platform-independent layer: App lifecycle, input frames, and the Settings, Storage, display, Audio, Clock, Network, and Battery contracts.
@@ -34,7 +34,7 @@ A Launcher cell that represents one registered App, shows that App's Accent, and
 _Avoid_: icon, tile, shortcut button
 
 **Boot screen**:
-The brief Logo splash Luma shows before entering Launcher. It is not an App.
+The brief Logo splash LUMA shows before entering Launcher. It is not an App.
 _Avoid_: splash App, boot App, home splash
 
 **Clock**:
@@ -117,7 +117,7 @@ The Core service that reports charge, samples Battery history, and checkpoints i
 _Avoid_: Power (as a service or Settings category), Battery App
 
 **Charging**:
-A Battery reading the platform may not know. Luma does not display it. Cardputer ADV cannot report it.
+A Battery reading the platform may not know. LUMA does not display it. Cardputer ADV cannot report it.
 _Avoid_: USB connected, Power
 
 **Battery band**:
@@ -133,7 +133,7 @@ One minute's Battery reading: percentage, voltage, charging, validity, and time.
 _Avoid_: telemetry point, log entry
 
 **Battery history**:
-The rolling 60-sample, one-hour window Battery keeps while Luma runs. A new run after startup is a gap. The Settings chart is right-aligned to now; empty slots on the left are minutes not yet sampled.
+The rolling 60-sample, one-hour window Battery keeps while LUMA runs. A new run after startup is a gap. The Settings chart is right-aligned to now; empty slots on the left are minutes not yet sampled.
 _Avoid_: sparkline, power log
 
 **Battery history chart**:
@@ -205,7 +205,7 @@ The palette color Confirm paints onto the current LED cell. Off is not a Pen col
 _Avoid_: brush, ink, Theme preference
 
 **About**:
-The System nested view that identifies the installed Luma build, hardware, and repository.
+The System nested view that identifies the installed LUMA build, hardware, and repository.
 _Avoid_: About App
 
 **Build identity**:
@@ -213,7 +213,7 @@ The version string About shows: a release is X.Y.Z; an unreleased build is X.Y.Z
 _Avoid_: semver +build, git describe
 
 **Cardputer ADV**:
-The M5Stack hardware Luma runs on; the v0.1 release authority.
+The M5Stack hardware LUMA runs on; the v0.1 release authority.
 _Avoid_: DevKit, ESP32 board
 
 **Audio**:
