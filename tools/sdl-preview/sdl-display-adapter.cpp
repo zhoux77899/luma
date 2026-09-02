@@ -1,6 +1,8 @@
 #include "sdl-display-adapter.h"
 
 #include "luma/ui/font.h"
+#include "preview-menu.h"
+#include "preview-screenshot.h"
 
 #include <SDL.h>
 
@@ -38,9 +40,11 @@ void SdlDisplayAdapter::begin() {
         return;
     }
 
+    top_inset_ = previewMenuTopInset();
+    const int window_h = kWindowHeight + top_inset_;
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    window_ = SDL_CreateWindow("Luma SDL preview", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                               kWindowWidth, kWindowHeight, SDL_WINDOW_RESIZABLE);
+    window_ = SDL_CreateWindow("Luma SDL preview", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, kWindowWidth,
+                               window_h, SDL_WINDOW_RESIZABLE);
     if (window_ == nullptr) {
         return;
     }
@@ -215,6 +219,47 @@ uint32_t SdlDisplayAdapter::dimPixel(uint32_t pixel) const {
     return (255u << 24) | (r << 16) | (g << 8) | b;
 }
 
+int SdlDisplayAdapter::currentScale() const {
+    if (window_ == nullptr) {
+        return 1;
+    }
+    int window_w = 0;
+    int window_h = 0;
+    SDL_GetWindowSize(window_, &window_w, &window_h);
+    const int avail_h = window_h - top_inset_;
+    int scale = window_w / kWidth;
+    const int scale_h = avail_h / kHeight;
+    if (scale_h < scale) {
+        scale = scale_h;
+    }
+    if (scale < 1) {
+        scale = 1;
+    }
+    return scale;
+}
+
+void SdlDisplayAdapter::canvasDest(SDL_Rect& dest) const {
+    int window_w = 0;
+    int window_h = 0;
+    SDL_GetWindowSize(window_, &window_w, &window_h);
+    const int scale = currentScale();
+    dest.w = kWidth * scale;
+    dest.h = kHeight * scale;
+    dest.x = (window_w - dest.w) / 2;
+    dest.y = top_inset_ + (window_h - top_inset_ - dest.h) / 2;
+}
+
+void SdlDisplayAdapter::copyPresentedArgb(std::vector<uint32_t>& dest, int& width, int& height) const {
+    uint32_t framed[kWidth * kHeight];
+    for (int i = 0; i < kWidth * kHeight; ++i) {
+        framed[i] = dimPixel(pixels_[i]);
+    }
+    const int scale = currentScale();
+    scaleNearestArgb(framed, kWidth, kHeight, scale, dest);
+    width = kWidth * scale;
+    height = kHeight * scale;
+}
+
 void SdlDisplayAdapter::endFrame() {
     if (renderer_ == nullptr || texture_ == nullptr) {
         return;
@@ -223,20 +268,9 @@ void SdlDisplayAdapter::endFrame() {
     int window_w = 0;
     int window_h = 0;
     SDL_GetWindowSize(window_, &window_w, &window_h);
-    int scale = window_w / kWidth;
-    const int scale_h = window_h / kHeight;
-    if (scale_h < scale) {
-        scale = scale_h;
-    }
-    if (scale < 1) {
-        scale = 1;
-    }
 
     SDL_Rect dest;
-    dest.w = kWidth * scale;
-    dest.h = kHeight * scale;
-    dest.x = (window_w - dest.w) / 2;
-    dest.y = (window_h - dest.h) / 2;
+    canvasDest(dest);
 
     uint32_t framed[kWidth * kHeight];
     for (int i = 0; i < kWidth * kHeight; ++i) {
@@ -247,6 +281,7 @@ void SdlDisplayAdapter::endFrame() {
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderClear(renderer_);
     SDL_RenderCopy(renderer_, texture_, nullptr, &dest);
+    drawPreviewMenuOverlay(renderer_, window_w, window_h);
     SDL_RenderPresent(renderer_);
 }
 

@@ -1,9 +1,32 @@
 #include "sdl-input-adapter.h"
 
+#include "preview-host.h"
+
 #include <SDL.h>
 
 namespace luma {
 namespace {
+
+bool isHostShortcut(const SDL_Event& event, PreviewCommand& command) {
+    if (event.type != SDL_KEYDOWN || event.key.repeat != 0) {
+        return false;
+    }
+    const SDL_Keymod mods = SDL_GetModState();
+    const bool host = (mods & (KMOD_CTRL | KMOD_GUI)) != 0;
+    const bool shift = (mods & KMOD_SHIFT) != 0;
+    if (!host || !shift) {
+        return false;
+    }
+    if (event.key.keysym.sym == SDLK_c) {
+        command = PreviewCommand::CopyScreenshot;
+        return true;
+    }
+    if (event.key.keysym.sym == SDLK_s) {
+        command = PreviewCommand::SaveScreenshot;
+        return true;
+    }
+    return false;
+}
 
 InputAction actionForKey(SDL_Keycode key) {
     switch (key) {
@@ -34,11 +57,23 @@ InputAction actionForKey(SDL_Keycode key) {
 
 }  // namespace
 
+void SdlInputAdapter::setHost(PreviewHost* host) { host_ = host; }
+
 void SdlInputAdapter::pump() {
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_QUIT) {
             quit_ = true;
+            continue;
+        }
+
+        if (host_ != nullptr && host_->handleEvent(event)) {
+            continue;
+        }
+
+        PreviewCommand host_command = PreviewCommand::None;
+        if (isHostShortcut(event, host_command)) {
+            command_ = host_command;
             continue;
         }
 
@@ -83,5 +118,11 @@ bool SdlInputAdapter::poll(InputFrame& frame) {
 }
 
 bool SdlInputAdapter::quitRequested() const { return quit_; }
+
+PreviewCommand SdlInputAdapter::takeCommand() {
+    const PreviewCommand command = command_;
+    command_ = PreviewCommand::None;
+    return command;
+}
 
 }  // namespace luma
