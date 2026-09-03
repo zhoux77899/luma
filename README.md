@@ -17,6 +17,10 @@
 LUMA is firmware for the M5Stack Cardputer ADV. After the Boot screen, Launcher
 opens Settings, Notes, and DOTS.
 
+The [user guide](docs/user-manual/README.md) covers flashing and each App in
+[English](docs/user-manual/en/README.md) and
+[简体中文](docs/user-manual/zh/README.md).
+
 | App | What it does | Screen |
 | --- | --- | --- |
 | Launcher | Opens registered Apps with directional navigation and confirm. The Header shows LUMA, network and battery glyphs, and civil time. | <img src="docs/user-manual/assets/luma-home.png" width="240" alt="Launcher"> |
@@ -28,6 +32,7 @@ opens Settings, Notes, and DOTS.
 
 | Goal | Start here |
 | --- | --- |
+| Read the user guide | [English](docs/user-manual/en/README.md) · [简体中文](docs/user-manual/zh/README.md) |
 | Use LUMA on a Cardputer ADV | [Flash a release](#flash-a-release) |
 | Build or test the firmware | [Build from source](#build-from-source) |
 | Inspect the UI without hardware | [SDL preview](#sdl-preview) |
