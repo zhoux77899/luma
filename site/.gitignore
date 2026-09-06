@@ -1,0 +1,5 @@
+node_modules/
+dist/
+public/content/
+public/assets/manual/
+public/versions.json

@@ -1,0 +1,151 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "Noto Sans SC", "Noto Sans", "Segoe UI", sans-serif;
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--bg);
+  --color-card: var(--bg-card);
+  --color-popover: var(--bg);
+  --color-popover-foreground: var(--fg);
+  --color-accent: color-mix(in srgb, var(--accent) 22%, var(--bg));
+  --color-accent-foreground: var(--fg);
+  --color-muted: var(--bg-card);
+  --color-border: var(--line);
+  --color-muted-foreground: var(--fg-muted);
+  --color-fuji: #8b81c3;
+  --color-momo: #f596aa;
+  --color-tamago: #f9bf45;
+  --color-byakuroku: #a8d8b9;
+  --color-benihi: #f75c2f;
+  --color-destructive: #f75c2f;
+  --color-tsuyukusa: #2ea9df;
+  --color-benimidori: #7b90d2;
+  --color-gofun: #fffffb;
+  --color-shironezumi: #bdc0ba;
+  --color-ginnezumi: #91989f;
+  --color-sumi: #1c1c1c;
+  --color-kuro: #080808;
+}
+
+:root,
+[data-theme="light"] {
+  --bg: #fffffb;
+  --bg-card: #bdc0ba;
+  --fg: #1c1c1c;
+  --fg-muted: #5c6166;
+  --line: #91989f;
+  --accent: #8b81c3;
+  --accent-2: #2ea9df;
+  --focus: #7b90d2;
+  --code-bg: #ecece8;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #080808;
+  --bg-card: #1c1c1c;
+  --fg: #fffffb;
+  --fg-muted: #bdc0ba;
+  --line: #91989f;
+  --accent: #8b81c3;
+  --accent-2: #81c7d4;
+  --focus: #7b90d2;
+  --code-bg: #1c1c1c;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-fuji) 40%, transparent);
+  color: var(--fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+a {
+  color: var(--accent-2);
+  text-underline-offset: 0.18em;
+}
+
+.prose-luma {
+  max-width: 72ch;
+}
+
+.prose-luma h1,
+.prose-luma h2,
+.prose-luma h3 {
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4em;
+}
+
+.prose-luma h1 {
+  font-size: 2rem;
+  margin-top: 0;
+}
+
+.prose-luma h2 {
+  font-size: 1.35rem;
+  margin-top: 2rem;
+}
+
+.prose-luma h3 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+}
+
+.prose-luma p,
+.prose-luma li {
+  font-size: 1rem;
+}
+
+.prose-luma pre,
+.prose-luma code {
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.prose-luma pre {
+  background: var(--code-bg);
+  border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.prose-luma img {
+  max-width: min(100%, 480px);
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  background: var(--color-kuro);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

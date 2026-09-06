@@ -43,6 +43,7 @@ or dependency migration is explicitly requested.
 - `lib/`: private project libraries
 - `test/`: PlatformIO test code
 - `tools/sdl-preview/`: host `luma-sdl-preview` CMake target and SDL adapters
+- `site/`: User guide site skeleton (Vite + React + beUI). Not firmware.
 - `platformio.ini`: build, upload, dependency, and monitor configuration
 - `README.md`: user-facing setup and hardware workflow
 - `LICENSE`: MIT License

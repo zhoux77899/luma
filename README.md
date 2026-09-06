@@ -17,9 +17,10 @@
 LUMA is firmware for the M5Stack Cardputer ADV. After the Boot screen, Launcher
 opens Settings, Notes, and DOTS.
 
-The [user guide](docs/user-manual/README.md) covers flashing and each App in
-[English](docs/user-manual/en/README.md) and
-[简体中文](docs/user-manual/zh/README.md).
+The [User guide](https://zhoux77899.github.io/luma/) covers flashing and each
+App in [English](https://zhoux77899.github.io/luma/en/) and
+[简体中文](https://zhoux77899.github.io/luma/zh/). Source Markdown stays in
+[docs/user-manual](docs/user-manual/README.md).
 
 | App | What it does | Screen |
 | --- | --- | --- |
@@ -32,7 +33,7 @@ The [user guide](docs/user-manual/README.md) covers flashing and each App in
 
 | Goal | Start here |
 | --- | --- |
-| Read the user guide | [English](docs/user-manual/en/README.md) · [简体中文](docs/user-manual/zh/README.md) |
+| Read the User guide | [English](https://zhoux77899.github.io/luma/en/) · [简体中文](https://zhoux77899.github.io/luma/zh/) · [source](docs/user-manual/README.md) |
 | Use LUMA on a Cardputer ADV | [Flash a release](#flash-a-release) |
 | Build or test the firmware | [Build from source](#build-from-source) |
 | Inspect the UI without hardware | [SDL preview](#sdl-preview) |
@@ -203,12 +204,27 @@ The preview window is 960 x 540 with a 240 x 135 Preview canvas and integer 4x
 nearest-neighbor scaling. Arrow keys, Enter, Escape, Backspace/Delete, Page Up/Page
 Down, and printable characters map to `InputFrame` values.
 
+## User guide site
+
+The published User guide is assembled from `docs/user-manual/` on main (`latest`)
+and from each GitHub Release tag. Preview it locally:
+
+```bash
+cd site
+npm ci
+npm run dev
+```
+
+The GitHub Pages site uses `https://zhoux77899.github.io/luma/`. Enable Pages
+with Source = GitHub Actions if the deploy workflow has not been allowed yet.
+
 ## Project layout
 
 - `include/luma` and `src/luma`: platform-independent Core, Apps, and UI.
 - `src/luma/platform/cardputer`: Cardputer hardware adapters and factory.
 - `src/luma/platform/host`: host storage, clock, audio, and diagnostics adapters.
 - `tools/sdl-preview`: CMake target and SDL display/input adapters.
+- `site`: User guide site (Vite + React + beUI).
 - `test`: native Core tests.
 - `partitions/luma-8mb.csv`: the Cardputer ADV 8 MB partition layout.
 
