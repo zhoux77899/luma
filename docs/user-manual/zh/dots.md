@@ -4,7 +4,9 @@ DOTS 列出各个 Matrix，一次只画一个 LED cell（灯点）组成的 Matr
 
 ## Matrix list
 
-没有 Matrix list 的截图。布局和 Note list 一样：已保存的 Matrix 按最近修改排在前面，每条是一个序号 chip 和一个名称 chip，New matrix 钉在底部。
+![Matrix list](../assets/luma-dots-menu.png)
+
+已保存的 Matrix 按最近修改排在前面，每条是一个序号 chip 和一个名称 chip。New matrix 钉在底部。
 
 上下键移动选择。在一个 Matrix 上 Confirm 进入绘制。在 New matrix 上 Confirm 打开名为 `Untitled` 的空白绘制。
 
