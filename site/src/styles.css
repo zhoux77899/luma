@@ -1,0 +1,179 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./typeset.css";
+
+@theme {
+  --font-sans: "Geist Variable", "Noto Sans SC", "Segoe UI", sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--bg);
+  --color-card: var(--bg-card);
+  --color-popover: var(--bg);
+  --color-popover-foreground: var(--fg);
+  --color-accent: color-mix(in srgb, var(--accent) 22%, var(--bg));
+  --color-accent-foreground: var(--fg);
+  --color-muted: var(--bg-card);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--fg-muted);
+  --color-fuji: #8b81c3;
+  --color-momo: #f596aa;
+  --color-tamago: #f9bf45;
+  --color-byakuroku: #a8d8b9;
+  --color-benihi: #f75c2f;
+  --color-destructive: #f75c2f;
+  --color-tsuyukusa: #2ea9df;
+  --color-benimidori: #7b90d2;
+  --color-gofun: #fffffb;
+  --color-shironezumi: #bdc0ba;
+  --color-ginnezumi: #91989f;
+  --color-sumi: #1c1c1c;
+  --color-kuro: #080808;
+}
+
+:root,
+[data-theme="light"] {
+  --bg: #fffffb;
+  --bg-card: #bdc0ba;
+  --fg: #1c1c1c;
+  --fg-muted: #5c6166;
+  --line: #91989f;
+  --border: color-mix(in srgb, var(--line) 40%, var(--bg));
+  --accent: #8b81c3;
+  --accent-2: #2ea9df;
+  --focus: #7b90d2;
+  --code-bg: #ecece8;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #080808;
+  --bg-card: #1c1c1c;
+  --fg: #fffffb;
+  --fg-muted: #bdc0ba;
+  --line: #91989f;
+  --border: color-mix(in srgb, var(--line) 40%, var(--bg));
+  --accent: #8b81c3;
+  --accent-2: #81c7d4;
+  --focus: #7b90d2;
+  --code-bg: #1c1c1c;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--line) 42%, transparent) transparent;
+  border-color: var(--color-border);
+}
+
+[data-doc-scroll] {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-inline-end: 1.25rem;
+}
+
+@supports selector(::-webkit-scrollbar-track) {
+  [data-doc-scroll] {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
+[data-doc-scroll]::-webkit-scrollbar-track {
+  margin-block: 5rem 1.5rem;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--line) 42%, transparent);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-fuji) 40%, transparent);
+  color: var(--fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+[data-slot="command-input"]:focus,
+[data-slot="command-input"]:focus-visible {
+  outline: none;
+}
+
+a {
+  color: var(--accent-2);
+  text-underline-offset: 0.18em;
+}
+
+.typeset-docs {
+  --typeset-font-body: var(--font-sans);
+  --typeset-font-heading: var(--font-sans);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: 1rem;
+  --typeset-leading: 1.6;
+  --typeset-flow: 1.25em;
+}
+
+.typeset-docs :where(pre) {
+  background: var(--code-bg);
+}
+
+.typeset-docs :where(img) {
+  max-width: min(100%, 480px);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  background: var(--color-kuro);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

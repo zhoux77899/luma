@@ -4,7 +4,9 @@ DOTS lists Matrices and paints one Matrix of LED cells at a time. A Matrix is 60
 
 ## Matrix list
 
-There is no screenshot of the Matrix list. The layout matches the Note list: saved Matrices newest-modified first, each as an index chip and a name chip, with New matrix pinned at the bottom.
+![Matrix list](../assets/luma-dots-menu.png)
+
+Saved Matrices appear newest-modified first, each as an index chip and a name chip. New matrix stays pinned at the bottom.
 
 Up and Down move the selection. Confirm on a Matrix opens paint. Confirm on New matrix opens an empty paint view named `Untitled`.
 

@@ -247,3 +247,11 @@ _Avoid_: firmware zip, segmented archive
 **Merged image**:
 The complete 8 MB ESP32-S3 flash image written at 0x00000000.
 _Avoid_: combined bin, full flash dump
+
+**User guide**:
+The bilingual handbook for flashing LUMA and using each App. Its source is `docs/user-manual/`.
+_Avoid_: user-manual (as the product name), docs, documentation, wiki
+
+**User guide site**:
+The published site that presents the User guide with a product cover. App names on that site match the firmware name() paint: LAUNCHER, SETTINGS, NOTES, DOTS.
+_Avoid_: docs site, documentation portal, LUMA website, 官网
