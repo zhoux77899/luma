@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/chrome/SiteHeader";
 import { Button, ButtonLink } from "@/components/motion/button/base";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { EASE_OUT } from "@/lib/ease";
-import type { VersionInfo } from "@/lib/content";
+import { latestReleaseLabel, type VersionInfo } from "@/lib/content";
 import { storeLocale } from "@/lib/locale";
 import { docPath, withBase, type Locale } from "@/lib/paths";
 
@@ -20,6 +20,7 @@ export function HomePage({ locale, versions }: Props) {
     storeLocale(locale);
   }, [locale]);
   const text = copy[locale];
+  const releaseLabel = latestReleaseLabel(versions);
   const reduce = useReducedMotion();
   const shots = [
     {
@@ -58,10 +59,18 @@ export function HomePage({ locale, versions }: Props) {
           transition={{ duration: 0.7, ease: EASE_OUT }}
         >
           <div className="max-w-xl shrink-0">
-            <img src={withBase("luma-logo.svg")} alt="" width={88} height={88} />
-            <h1 className="mt-6 text-5xl font-medium tracking-[-0.03em] text-[color:var(--fg)] md:text-6xl">
-              {text.title}
-            </h1>
+            <div className="flex items-center gap-[0.32em] text-5xl leading-none md:text-6xl">
+              <img
+                src={withBase("luma-logo.svg")}
+                alt=""
+                className="block size-[1.25em] shrink-0"
+                width={75}
+                height={75}
+              />
+              <h1 className="text-[1em] font-medium tracking-[-0.03em] leading-none text-[color:var(--fg)]">
+                {text.title}
+              </h1>
+            </div>
             <p className="mt-5 max-w-md text-lg text-[color:var(--fg-muted)]">{text.offer}</p>
             <ul className="mt-8 space-y-4">
               {shots.map((shot) => (
@@ -76,12 +85,12 @@ export function HomePage({ locale, versions }: Props) {
                 <Button type="button">{text.read}</Button>
               </Link>
               <ButtonLink
-                href="https://github.com/zhoux77899/luma"
+                href="https://github.com/zhoux77899/luma/releases/latest"
                 variant="outline"
                 target="_blank"
                 rel="noreferrer"
               >
-                {text.github}
+                {releaseLabel ? `${text.github} ${releaseLabel}` : text.github}
               </ButtonLink>
             </div>
           </div>

@@ -1,4 +1,4 @@
-# Notes
+# NOTES
 
 Notes 列出各条 Note，一次只编辑一份 Notes document（笔记正文）。从 [Launcher](launcher.md) 打开。
 

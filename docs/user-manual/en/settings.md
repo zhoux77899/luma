@@ -1,4 +1,4 @@
-# Settings
+# SETTINGS
 
 Settings is the App that edits device preferences. Open it from [Launcher](launcher.md).
 

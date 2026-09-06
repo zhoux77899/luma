@@ -38,7 +38,10 @@ function resolveHref(href: string | undefined): string | undefined {
 
 export function MarkdownView({ markdown }: { markdown: string }) {
   return (
-    <div className="prose-luma">
+    <div
+      data-doc-scroll
+      className="typeset typeset-docs max-w-[72ch] lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pt-20 lg:pb-6"
+    >
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{

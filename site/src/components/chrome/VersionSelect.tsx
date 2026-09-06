@@ -39,7 +39,7 @@ export function VersionSelect({ locale, version, versions }: Props) {
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="rounded-xl px-2.5">
           <span>{versionLabel(selected)}</span>
-          <ChevronDown size={14} />
+          <ChevronDown className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-36 rounded-xl">
@@ -48,7 +48,7 @@ export function VersionSelect({ locale, version, versions }: Props) {
             key={item.id}
             onSelect={() => navigate(docPath(item.id, locale, slug))}
           >
-            <Check className={item.id === current ? "opacity-100" : "opacity-0"} />
+            <Check className={`size-4 ${item.id === current ? "opacity-100" : "opacity-0"}`} />
             <span>{versionLabel(item)}</span>
           </DropdownMenuItem>
         ))}

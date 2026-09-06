@@ -1,4 +1,4 @@
-# Launcher
+# LAUNCHER
 
 Launcher is the screen after the Boot screen. It is where you open other Apps. The Header shows the product word LUMA, not the name LAUNCHER.
 

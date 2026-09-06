@@ -77,7 +77,7 @@ function LoadedDoc({
       {!page.hasUserGuide || meta?.hasUserGuide === false ? (
         <p className="mb-6 text-[color:var(--fg-muted)]">{text.stubLead}</p>
       ) : null}
-      <MarkdownView markdown={page.markdown} />
+      <MarkdownView key={slug} markdown={page.markdown} />
       {!page.hasUserGuide ? (
         <p className="mt-8">
           <Link to={docPath("latest", locale, "getting-started")}>{text.stubAction}</Link>

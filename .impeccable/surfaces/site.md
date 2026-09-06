@@ -19,7 +19,7 @@ OWN-WORLD: Nippon neutrals (Gofun/Kuro canvases, Sumi text) with Fuji/Momo/Tamag
 
 STORY: This is LUMA for Cardputer ADV. Read the current User guide or a frozen Release, including an honest stub.
 
-FIRST VIEWPORT: Full-viewport cover under a borderless glass header. Logo, LUMA word, one-line offer, Settings/Notes/DOTS as a trait list, primary CTA into `/latest/{locale}/getting-started`, secondary to the GitHub repo; real firmware screenshots as proof, not a card grid.
+FIRST VIEWPORT: Full-viewport cover under a borderless header. Logo and the LUMA word on one line, one-line offer, SETTINGS/NOTES/DOTS as a trait list, primary CTA into `/latest/{locale}/getting-started`, secondary to the GitHub repo; real firmware screenshots as proof, not a card grid.
 
 FORM: Established firmware world; Vite + React + public @beui; seed skipped per plan.
 

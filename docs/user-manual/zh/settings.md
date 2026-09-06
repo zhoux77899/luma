@@ -1,4 +1,4 @@
-# Settings
+# SETTINGS
 
 Settings 是改设备偏好的 App。从 [Launcher](launcher.md) 打开。
 

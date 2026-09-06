@@ -34,7 +34,7 @@ export function LocaleSelect({ locale, version }: Props) {
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="rounded-xl px-2.5">
           <span>{current.label}</span>
-          <ChevronDown size={14} />
+          <ChevronDown className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-36 rounded-xl">
@@ -46,7 +46,7 @@ export function LocaleSelect({ locale, version }: Props) {
               navigate(version ? docPath(version, item.id, slug) : localeHome(item.id));
             }}
           >
-            <Check className={item.id === locale ? "opacity-100" : "opacity-0"} />
+            <Check className={`size-4 ${item.id === locale ? "opacity-100" : "opacity-0"}`} />
             <span>{item.label}</span>
           </DropdownMenuItem>
         ))}

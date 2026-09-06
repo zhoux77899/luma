@@ -1,4 +1,4 @@
-# Notes
+# NOTES
 
 Notes lists Notes and edits one Notes document at a time. Open it from [Launcher](launcher.md).
 

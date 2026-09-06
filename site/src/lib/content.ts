@@ -71,3 +71,7 @@ export async function loadSearch(version: string): Promise<SearchDoc[]> {
 export function isKnownVersion(versions: VersionInfo[], id: string): boolean {
   return versions.some((version) => version.id === id);
 }
+
+export function latestReleaseLabel(versions: VersionInfo[]): string | undefined {
+  return versions.find((item) => item.id !== "latest" && !item.prerelease)?.label;
+}

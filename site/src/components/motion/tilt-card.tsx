@@ -2,7 +2,7 @@
 // beui.dev/components/motion/tilt-card
 
 import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring } from "motion/react";
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { SPRING_MOUSE } from "@/lib/ease";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ export interface TiltCardProps {
 
 export function TiltCard({ children, max = 12, glare = true, className }: TiltCardProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [lifted, setLifted] = useState(false);
   const reduce = useReducedMotion();
   const canHover = useHoverCapable();
   // Decorative cursor-follow: skip on touch (phantom hover) and reduced motion.
@@ -43,6 +44,7 @@ export function TiltCard({ children, max = 12, glare = true, className }: TiltCa
   const onLeave = () => {
     rx.set(0);
     ry.set(0);
+    setLifted(false);
   };
 
   const transform = useMotionTemplate`perspective(1000px) rotateX(${srx}deg) rotateY(${sry}deg)`;
@@ -52,9 +54,10 @@ export function TiltCard({ children, max = 12, glare = true, className }: TiltCa
     <motion.div
       ref={ref}
       onMouseMove={onMove}
+      onMouseEnter={() => setLifted(true)}
       onMouseLeave={onLeave}
-      style={{ transform, transformStyle: "preserve-3d" }}
-      className={cn("relative overflow-hidden rounded-2xl will-change-transform", className)}
+      style={{ transform, transformStyle: "preserve-3d", zIndex: lifted ? 50 : undefined }}
+      className={cn("relative overflow-hidden rounded-2xl will-change-transform hover:!z-50", className)}
     >
       {children}
       {glare && enabled ? (

@@ -1,8 +1,13 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./typeset.css";
 
 @theme {
-  --font-sans: "Noto Sans SC", "Noto Sans", "Segoe UI", sans-serif;
+  --font-sans: "Geist Variable", "Noto Sans SC", "Segoe UI", sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --color-background: var(--bg);
   --color-foreground: var(--fg);
   --color-primary: var(--accent);
@@ -13,7 +18,7 @@
   --color-accent: color-mix(in srgb, var(--accent) 22%, var(--bg));
   --color-accent-foreground: var(--fg);
   --color-muted: var(--bg-card);
-  --color-border: var(--line);
+  --color-border: var(--border);
   --color-muted-foreground: var(--fg-muted);
   --color-fuji: #8b81c3;
   --color-momo: #f596aa;
@@ -37,6 +42,7 @@
   --fg: #1c1c1c;
   --fg-muted: #5c6166;
   --line: #91989f;
+  --border: color-mix(in srgb, var(--line) 40%, var(--bg));
   --accent: #8b81c3;
   --accent-2: #2ea9df;
   --focus: #7b90d2;
@@ -50,6 +56,7 @@
   --fg: #fffffb;
   --fg-muted: #bdc0ba;
   --line: #91989f;
+  --border: color-mix(in srgb, var(--line) 40%, var(--bg));
   --accent: #8b81c3;
   --accent-2: #81c7d4;
   --focus: #7b90d2;
@@ -61,6 +68,56 @@ html,
 body,
 #root {
   min-height: 100%;
+}
+
+html {
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--line) 42%, transparent) transparent;
+  border-color: var(--color-border);
+}
+
+[data-doc-scroll] {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-inline-end: 1.25rem;
+}
+
+@supports selector(::-webkit-scrollbar-track) {
+  [data-doc-scroll] {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
+[data-doc-scroll]::-webkit-scrollbar-track {
+  margin-block: 5rem 1.5rem;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--line) 42%, transparent);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 body {
@@ -81,60 +138,31 @@ body {
   outline-offset: 3px;
 }
 
+[data-slot="command-input"]:focus,
+[data-slot="command-input"]:focus-visible {
+  outline: none;
+}
+
 a {
   color: var(--accent-2);
   text-underline-offset: 0.18em;
 }
 
-.prose-luma {
-  max-width: 72ch;
+.typeset-docs {
+  --typeset-font-body: var(--font-sans);
+  --typeset-font-heading: var(--font-sans);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: 1rem;
+  --typeset-leading: 1.6;
+  --typeset-flow: 1.25em;
 }
 
-.prose-luma h1,
-.prose-luma h2,
-.prose-luma h3 {
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.4em;
-}
-
-.prose-luma h1 {
-  font-size: 2rem;
-  margin-top: 0;
-}
-
-.prose-luma h2 {
-  font-size: 1.35rem;
-  margin-top: 2rem;
-}
-
-.prose-luma h3 {
-  font-size: 1.1rem;
-  margin-top: 1.5rem;
-}
-
-.prose-luma p,
-.prose-luma li {
-  font-size: 1rem;
-}
-
-.prose-luma pre,
-.prose-luma code {
-  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.92em;
-}
-
-.prose-luma pre {
+.typeset-docs :where(pre) {
   background: var(--code-bg);
-  border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
-  border-radius: 12px;
-  padding: 1rem 1.1rem;
-  overflow-x: auto;
 }
 
-.prose-luma img {
+.typeset-docs :where(img) {
   max-width: min(100%, 480px);
-  height: auto;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
   background: var(--color-kuro);

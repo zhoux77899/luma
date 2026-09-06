@@ -33,7 +33,7 @@ Readers arrive from the GitHub README, a Release page, or About on device (Build
 - `latest` is always main. `/main/` is not a public path.
 - `/` follows `zh*` vs other browser languages and remembers the choice.
 - Search, left directory, right on-this-page headings.
-- beUI chrome on the cover and shell; guide bodies stay quiet Markdown.
+- beUI chrome on the cover and shell; guide bodies use Typeset.
 - Only the public `@beui` registry. No beUI Pro.
 - Colors and Logo follow DESIGN.md. ADR, DESIGN.md, and agent docs stay off the site.
 

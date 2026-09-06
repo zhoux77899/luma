@@ -10,11 +10,11 @@ export type NavItem = {
 export const NAV: NavItem[] = [
   { slug: "getting-started", en: "Getting started", zh: "快速开始" },
   { slug: "keys", en: "Keys", zh: "按键" },
-  { slug: "launcher", en: "Launcher", zh: "Launcher" },
+  { slug: "launcher", en: "LAUNCHER", zh: "LAUNCHER" },
   {
     slug: "settings",
-    en: "Settings",
-    zh: "Settings",
+    en: "SETTINGS",
+    zh: "SETTINGS",
     children: [
       { slug: "settings/display", en: "Display", zh: "Display" },
       { slug: "settings/sound", en: "Sound", zh: "Sound" },
@@ -24,7 +24,7 @@ export const NAV: NavItem[] = [
       { slug: "settings/system", en: "System", zh: "System" },
     ],
   },
-  { slug: "notes", en: "Notes", zh: "Notes" },
+  { slug: "notes", en: "NOTES", zh: "NOTES" },
   { slug: "dots", en: "DOTS", zh: "DOTS" },
 ];
 

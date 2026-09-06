@@ -253,5 +253,5 @@ The bilingual handbook for flashing LUMA and using each App. Its source is `docs
 _Avoid_: user-manual (as the product name), docs, documentation, wiki
 
 **User guide site**:
-The published site that presents the User guide with a product cover. It is not a general LUMA website.
+The published site that presents the User guide with a product cover. App names on that site match the firmware name() paint: LAUNCHER, SETTINGS, NOTES, DOTS.
 _Avoid_: docs site, documentation portal, LUMA website, 官网
