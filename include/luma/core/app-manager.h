@@ -19,7 +19,7 @@ struct AppDescriptor {
 
 class AppManager {
 public:
-    static constexpr size_t kMaxApps = 8;
+    static constexpr size_t kMaxApps = 32;
     static constexpr const char* kLauncherId = "launcher";
 
     AppManager(AppContext& context, Diagnostics& diagnostics);

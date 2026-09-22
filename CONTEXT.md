@@ -33,6 +33,10 @@ _Avoid_: Home (as a type name), menu, desktop, home screen
 A Launcher cell that represents one registered App, shows that App's Accent, and is the control that opens it.
 _Avoid_: icon, tile, shortcut button
 
+**App card page**:
+One four-row, two-column group of App cards in Launcher. Directional selection turns to another page at an edge when more than one page exists.
+_Avoid_: folder, scrolling list, desktop
+
 **Boot screen**:
 The brief Logo splash LUMA shows before entering Launcher. It is not an App.
 _Avoid_: splash App, boot App, home splash
