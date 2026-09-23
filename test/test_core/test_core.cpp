@@ -6,6 +6,7 @@
 #include "luma/core/in-memory-storage.h"
 #include "luma/core/input-manager.h"
 #include "luma/apps/dots-app.h"
+#include "luma/apps/launcher-app.h"
 #include "luma/apps/notes-app.h"
 #include "luma/apps/settings-app.h"
 #include "luma/version.h"
@@ -107,7 +108,283 @@ struct AppManagerFixture {
     }
 };
 
+class LauncherTestApp : public luma::App {
+public:
+    void configure(int index) {
+        std::snprintf(id_, sizeof(id_), "card%02d", index);
+        std::snprintf(name_, sizeof(name_), "CARD%02d", index);
+        const luma::Color colors[] = {kTsuyukusa, kWakatake, kYamabuki};
+        accent_ = colors[index % 3];
+    }
+
+    const char* id() const override { return id_; }
+    const char* name() const override { return name_; }
+    luma::Color accent() const override { return accent_; }
+    void update(const luma::InputFrame&) override {}
+    void draw() override {}
+
+private:
+    char id_[12]{};
+    char name_[12]{};
+    luma::Color accent_{};
+};
+
+class LauncherTestDisplay : public FakeDisplay {
+public:
+    void beginFrame() override {
+        ++frames;
+        FakeDisplay::beginFrame();
+    }
+    int frames = 0;
+};
+
+struct LauncherFixture {
+    LauncherTestDisplay display;
+    Settings settings;
+    CountingStorage storage;
+    FakeClock clock;
+    FakeDiagnostics diagnostics;
+    FakeWifiRadio radio;
+    luma::Network network;
+    FakeBatterySource battery_source;
+    luma::Battery battery;
+    AppContext context;
+    AppManager manager;
+    luma::LauncherApp launcher;
+    LauncherTestApp cards[33];
+    int card_count;
+
+    explicit LauncherFixture(int count, uint8_t theme = 0)
+        : context(display, settings, storage, clock, diagnostics, network, battery),
+          manager(context, diagnostics), launcher(manager), card_count(count) {
+        network.attach(radio, storage, diagnostics, clock);
+        battery.attach(battery_source, storage, diagnostics, clock);
+        settings.setTheme(theme);
+        clock.civil.hour = 12;
+        clock.civil.minute = 34;
+        clock.civil.valid = true;
+        for (int i = 0; i < 33; ++i) {
+            cards[i].configure(i);
+        }
+        // Register Launcher in the middle to exercise filtering without reordering cards.
+        for (int i = 0; i <= count; ++i) {
+            if (i == count / 2) {
+                TEST_ASSERT_TRUE(registerApp(launcher));
+            }
+            if (i < count) {
+                TEST_ASSERT_TRUE(registerApp(cards[i]));
+            }
+        }
+        TEST_ASSERT_TRUE(manager.enter(AppManager::kLauncherId));
+        manager.drawIfNeeded();
+    }
+
+    bool registerApp(luma::App& app) {
+        return manager.registerApp({&app, app.id(), app.name(), app.shortcut()});
+    }
+
+    void press(InputAction action) {
+        manager.dispatch(makeAction(action));
+        manager.drawIfNeeded();
+    }
+
+    void navigate(const char* directions) {
+        for (const char* next = directions; *next != '\0'; ++next) {
+            switch (*next) {
+                case 'L': press(InputAction::Left); break;
+                case 'R': press(InputAction::Right); break;
+                case 'U': press(InputAction::Up); break;
+                case 'D': press(InputAction::Down); break;
+                default: TEST_FAIL_MESSAGE("Unknown test direction");
+            }
+        }
+    }
+
+    void expectPage(int first, int visible, int selected) {
+        const auto palette = luma::theme::paletteFor(settings.theme());
+        TEST_ASSERT_TRUE(display.hasText("LUMA"));
+        TEST_ASSERT_TRUE(display.hasText("12:34"));
+        TEST_ASSERT_TRUE(display.hasBitmap({kHeaderLogoX, kHeaderLogoY}, kHeaderLogoSize,
+                                          kHeaderLogoSize));
+        TEST_ASSERT_FALSE(display.hasText("LAUNCHER"));
+        // Only the Header title/time and each card's initial/name are painted.
+        TEST_ASSERT_EQUAL_UINT(2 + 2 * visible, display.texts.size());
+        for (int i = 0; i < card_count; ++i) {
+            TEST_ASSERT_EQUAL(i >= first && i < first + visible,
+                              display.hasText(cards[i].name()));
+        }
+        int painted_cards = 0;
+        for (const auto& stroke : display.strokes) {
+            if (stroke.rect.w == 111 && stroke.rect.h == 22) {
+                ++painted_cards;
+                TEST_ASSERT_TRUE(stroke.rect.y >= 35 && stroke.rect.y + stroke.rect.h <= 132);
+            }
+        }
+        TEST_ASSERT_EQUAL_INT(visible, painted_cards);
+        TEST_ASSERT_TRUE(painted_cards <= 8);
+        for (int slot = 0; slot < visible; ++slot) {
+            const int index = first + slot;
+            const auto bounds = appCardBounds(slot % 2, slot / 2);
+            TEST_ASSERT_TRUE(display.hasStroke(bounds, cards[index].accent()));
+            TEST_ASSERT_TRUE(display.hasFill(bounds, index == selected
+                                                        ? cards[index].accent() : palette.canvas));
+        }
+    }
+};
+
 }  // namespace
+
+void test_app_manager_registers_32_apps_and_rejects_overflow_without_changes() {
+    LauncherFixture fixture(0);
+    for (int i = 0; i < 8; ++i) {
+        TEST_ASSERT_TRUE(fixture.registerApp(fixture.cards[i]));
+    }
+    TEST_ASSERT_EQUAL_UINT(9, fixture.manager.appCount());
+    for (int i = 8; i < 31; ++i) {
+        TEST_ASSERT_TRUE(fixture.registerApp(fixture.cards[i]));
+    }
+    TEST_ASSERT_EQUAL_UINT(32, fixture.manager.appCount());
+    TEST_ASSERT_FALSE(fixture.registerApp(fixture.cards[31]));
+    TEST_ASSERT_EQUAL_UINT(32, fixture.manager.appCount());
+    TEST_ASSERT_EQUAL_PTR(&fixture.launcher, fixture.manager.appAt(0).instance);
+    for (int i = 0; i < 31; ++i) {
+        const auto& descriptor = fixture.manager.appAt(i + 1);
+        TEST_ASSERT_EQUAL_PTR(&fixture.cards[i], descriptor.instance);
+        TEST_ASSERT_EQUAL_STRING(fixture.cards[i].id(), descriptor.id);
+        TEST_ASSERT_EQUAL_STRING(fixture.cards[i].name(), descriptor.name);
+        TEST_ASSERT_TRUE(fixture.manager.enter(fixture.cards[i].id()));
+        TEST_ASSERT_EQUAL_PTR(&fixture.cards[i], fixture.manager.current());
+    }
+    TEST_ASSERT_FALSE(fixture.manager.enter(fixture.cards[31].id()));
+    TEST_ASSERT_EQUAL_PTR(&fixture.cards[30], fixture.manager.current());
+}
+
+void test_app_manager_rejects_duplicate_id_without_replacing_original() {
+    LauncherFixture fixture(1);
+    TEST_ASSERT_FALSE(fixture.manager.registerApp(
+        {&fixture.cards[1], fixture.cards[0].id(), fixture.cards[1].name(), '\0'}));
+    TEST_ASSERT_EQUAL_UINT(2, fixture.manager.appCount());
+    TEST_ASSERT_TRUE(fixture.manager.enter(fixture.cards[0].id()));
+    TEST_ASSERT_EQUAL_PTR(&fixture.cards[0], fixture.manager.current());
+}
+
+void test_launcher_empty_registry_keeps_header_and_ignores_input() {
+    LauncherFixture fixture(0);
+    fixture.navigate("LRUD");
+    fixture.press(InputAction::Confirm);
+    fixture.expectPage(0, 0, -1);
+    TEST_ASSERT_EQUAL_STRING("launcher", fixture.manager.currentId());
+    TEST_ASSERT_EQUAL_INT(1, fixture.display.frames);
+}
+
+void test_launcher_renders_only_visible_cards_in_both_themes() {
+    struct PageCase { int count; const char* moves; int first; int visible; int selected; };
+    const PageCase cases[] = {
+        {1, "", 0, 1, 0}, {3, "", 0, 3, 0}, {8, "", 0, 8, 0},
+        {9, "", 0, 8, 0}, {9, "RR", 8, 1, 8},
+        {11, "RRD", 8, 3, 10}, {16, "RRDDD", 8, 8, 14},
+        {17, "RR", 8, 8, 8}, {17, "RRRR", 16, 1, 16},
+        {31, "RRRR", 16, 8, 16}, {31, "RRRRRRDDD", 24, 7, 30},
+    };
+    for (uint8_t theme = 0; theme < 2; ++theme) {
+        for (const auto& item : cases) {
+            LauncherFixture fixture(item.count, theme);
+            fixture.navigate(item.moves);
+            fixture.expectPage(item.first, item.visible, item.selected);
+        }
+    }
+}
+
+void test_launcher_single_page_navigation_clamps_at_missing_cards() {
+    struct NavigationCase { int count; const char* moves; int selected; };
+    const NavigationCase cases[] = {
+        {1, "LRUD", 0}, {3, "L", 0}, {3, "U", 0}, {3, "RR", 1},
+        {3, "RD", 1}, {3, "DD", 2}, {3, "DR", 2}, {3, "DU", 0},
+        {3, "RL", 0}, {8, "DR", 3}, {8, "DDU", 2}, {8, "DRL", 2},
+        {8, "L", 0}, {8, "U", 0}, {8, "RR", 1}, {8, "DDDD", 6},
+        {8, "RDDDD", 7},
+    };
+    for (const auto& item : cases) {
+        LauncherFixture fixture(item.count);
+        fixture.navigate(item.moves);
+        fixture.press(InputAction::Confirm);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(fixture.cards[item.selected].id(),
+                                         fixture.manager.currentId(), item.moves);
+    }
+}
+
+void test_launcher_directional_edges_change_pages_and_wrap() {
+    struct NavigationCase { int count; const char* moves; int selected; };
+    const NavigationCase cases[] = {
+        {16, "L", 9}, {16, "U", 14}, {16, "RR", 8}, {16, "DDDD", 8},
+        {16, "RU", 15}, {16, "DL", 11}, {16, "DDDRR", 14}, {16, "RDDDD", 9},
+        {16, "RRL", 1}, {16, "RRU", 6}, {16, "RRRR", 0}, {16, "RRDDDD", 0},
+        {16, "RRRU", 7}, {16, "RRRDDDD", 1},
+        {17, "L", 16}, {17, "U", 16}, {17, "RR", 8}, {17, "RRRR", 16},
+        {17, "RRRRR", 0}, {17, "RRRRL", 9}, {17, "RRRRU", 14},
+        {31, "L", 25}, {31, "U", 30}, {31, "RU", 29}, {31, "RRRR", 16},
+        {31, "RRRRRR", 24}, {31, "RRRRRRRR", 0}, {31, "DDDL", 30},
+        {31, "RRRRRRDDDR", 6}, {31, "RRRRRRRDDD", 1},
+    };
+    for (const auto& item : cases) {
+        LauncherFixture fixture(item.count);
+        fixture.navigate(item.moves);
+        fixture.press(InputAction::Confirm);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(fixture.cards[item.selected].id(),
+                                         fixture.manager.currentId(), item.moves);
+    }
+}
+
+void test_launcher_sparse_pages_preserve_rows_and_available_columns() {
+    struct NavigationCase { int count; const char* moves; int selected; };
+    const NavigationCase cases[] = {
+        {9, "L", 8}, {9, "U", 8}, {9, "RU", 8}, {9, "DDDRR", 8},
+        {9, "RDDDD", 8}, {9, "RRR", 0}, {9, "RRD", 0}, {9, "RRL", 1},
+        {9, "RRU", 6},
+        {11, "L", 9}, {11, "U", 10}, {11, "RU", 9}, {11, "DL", 10},
+        {11, "DDDRR", 10}, {11, "DDDD", 8}, {11, "RDDDD", 9},
+        {11, "RRDR", 2}, {11, "RRDD", 0}, {11, "RRRD", 1},
+        {11, "RRDL", 3}, {11, "RRRR", 0}, {11, "RRU", 6},
+    };
+    for (const auto& item : cases) {
+        LauncherFixture fixture(item.count);
+        fixture.navigate(item.moves);
+        fixture.press(InputAction::Confirm);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(fixture.cards[item.selected].id(),
+                                         fixture.manager.currentId(), item.moves);
+    }
+}
+
+void test_launcher_back_resets_later_page_selection() {
+    LauncherFixture fixture(17);
+    fixture.navigate("RRRR");
+    fixture.press(InputAction::Confirm);
+    TEST_ASSERT_EQUAL_STRING("card16", fixture.manager.currentId());
+    fixture.press(InputAction::Back);
+    TEST_ASSERT_EQUAL_STRING("launcher", fixture.manager.currentId());
+    fixture.expectPage(0, 8, 0);
+    fixture.press(InputAction::Confirm);
+    TEST_ASSERT_EQUAL_STRING("card00", fixture.manager.currentId());
+}
+
+void test_launcher_only_redraws_when_navigation_changes_selection() {
+    LauncherFixture single_page(3);
+    single_page.navigate("LU");
+    TEST_ASSERT_EQUAL_INT(1, single_page.display.frames);
+    single_page.navigate("R");
+    TEST_ASSERT_EQUAL_INT(2, single_page.display.frames);
+    single_page.navigate("RD");
+    TEST_ASSERT_EQUAL_INT(2, single_page.display.frames);
+
+    LauncherFixture multiple_pages(9);
+    multiple_pages.navigate("RR");
+    TEST_ASSERT_EQUAL_INT(3, multiple_pages.display.frames);
+    multiple_pages.press(InputAction::None);
+    multiple_pages.press(InputAction::PageNext);
+    multiple_pages.press(InputAction::PagePrevious);
+    TEST_ASSERT_EQUAL_INT(3, multiple_pages.display.frames);
+    multiple_pages.expectPage(8, 1, 8);
+}
 
 void test_app_manager_lifecycle_order() {
     AppManagerFixture fixture;
@@ -3184,6 +3461,15 @@ int main() {
     RUN_TEST(test_app_manager_back_returns_to_launcher);
     RUN_TEST(test_app_manager_launcher_back_is_noop);
     RUN_TEST(test_app_manager_shortcut_opens_registered_app);
+    RUN_TEST(test_app_manager_registers_32_apps_and_rejects_overflow_without_changes);
+    RUN_TEST(test_app_manager_rejects_duplicate_id_without_replacing_original);
+    RUN_TEST(test_launcher_empty_registry_keeps_header_and_ignores_input);
+    RUN_TEST(test_launcher_renders_only_visible_cards_in_both_themes);
+    RUN_TEST(test_launcher_single_page_navigation_clamps_at_missing_cards);
+    RUN_TEST(test_launcher_directional_edges_change_pages_and_wrap);
+    RUN_TEST(test_launcher_sparse_pages_preserve_rows_and_available_columns);
+    RUN_TEST(test_launcher_back_resets_later_page_selection);
+    RUN_TEST(test_launcher_only_redraws_when_navigation_changes_selection);
     RUN_TEST(test_luma_begin_shows_boot_screen);
     RUN_TEST(test_luma_enters_launcher_after_boot_timeout);
     RUN_TEST(test_luma_boot_skips_on_input);

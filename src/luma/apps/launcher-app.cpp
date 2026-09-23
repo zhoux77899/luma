@@ -8,12 +8,20 @@
 #include "luma/core/network.h"
 #include "luma/core/settings.h"
 #include "luma/ui/components.h"
+#include "luma/ui/layout.h"
 #include "luma/ui/renderer.h"
 #include "luma/ui/theme.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace luma {
+namespace {
+
+constexpr int kCardColumns = 2;
+constexpr int kCardsPerPage = kCardColumns * layout::kCardRows;
+
+}  // namespace
 
 LauncherApp::LauncherApp(AppManager& manager) : manager_(manager) {}
 
@@ -35,37 +43,87 @@ int LauncherApp::launchableCount() const {
     return count;
 }
 
-void LauncherApp::collectLaunchable(const char** ids, const char** names, Color* accents) const {
-    int count = 0;
+const AppDescriptor* LauncherApp::launchableAt(int index) const {
     for (size_t i = 0; i < manager_.appCount(); ++i) {
         const AppDescriptor& descriptor = manager_.appAt(i);
         if (std::strcmp(descriptor.id, AppManager::kLauncherId) == 0) {
             continue;
         }
-        ids[count] = descriptor.id;
-        names[count] = descriptor.name;
-        accents[count] =
-            descriptor.instance != nullptr ? descriptor.instance->accent() : theme::kAccent;
-        ++count;
+        if (index-- == 0) {
+            return &descriptor;
+        }
     }
+    return nullptr;
 }
 
 void LauncherApp::moveSelection(InputAction action, int count) {
     if (count <= 0) {
         return;
     }
-    const int column = selected_ % 2;
-    const int row = selected_ / 2;
-    int next = selected_;
-    if (action == InputAction::Right && column == 0 && selected_ + 1 < count) {
-        next = selected_ + 1;
-    } else if (action == InputAction::Left && column == 1) {
-        next = selected_ - 1;
-    } else if (action == InputAction::Down && selected_ + 2 < count) {
-        next = selected_ + 2;
-    } else if (action == InputAction::Up && row > 0) {
-        next = selected_ - 2;
+    const int page = selected_ / kCardsPerPage;
+    const int slot = selected_ % kCardsPerPage;
+    const int column = slot % kCardColumns;
+    const int row = slot / kCardColumns;
+    int page_start = page * kCardsPerPage;
+    int page_size = std::min(kCardsPerPage, count - page_start);
+    int next_slot = slot;
+    int page_step = 0;
+    switch (action) {
+        case InputAction::Right:
+            if (column + 1 < kCardColumns && slot + 1 < page_size) {
+                next_slot = slot + 1;
+            } else {
+                page_step = 1;
+            }
+            break;
+        case InputAction::Left:
+            if (column > 0) {
+                next_slot = slot - 1;
+            } else {
+                page_step = -1;
+            }
+            break;
+        case InputAction::Down:
+            if (slot + kCardColumns < page_size) {
+                next_slot = slot + kCardColumns;
+            } else {
+                page_step = 1;
+            }
+            break;
+        case InputAction::Up:
+            if (row > 0) {
+                next_slot = slot - kCardColumns;
+            } else {
+                page_step = -1;
+            }
+            break;
+        default:
+            return;
     }
+
+    if (page_step != 0) {
+        if (count <= kCardsPerPage) {
+            return;
+        }
+        const int page_count = (count + kCardsPerPage - 1) / kCardsPerPage;
+        const int next_page = (page + page_step + page_count) % page_count;
+        page_start = next_page * kCardsPerPage;
+        page_size = std::min(kCardsPerPage, count - page_start);
+        if (action == InputAction::Left || action == InputAction::Right) {
+            const int target_row = std::min(row, (page_size - 1) / kCardColumns);
+            next_slot = target_row * kCardColumns;
+            if (action == InputAction::Left) {
+                next_slot = std::min(next_slot + kCardColumns - 1, page_size - 1);
+            }
+        } else {
+            const int target_column = std::min(column, page_size - 1);
+            next_slot = target_column;
+            if (action == InputAction::Up) {
+                next_slot += ((page_size - 1 - target_column) / kCardColumns) * kCardColumns;
+            }
+        }
+    }
+    const int next = page_start + next_slot;
     if (next != selected_) {
         selected_ = next;
         if (context_ != nullptr) {
@@ -87,11 +145,9 @@ void LauncherApp::update(const InputFrame& input) {
     }
 
     if (input.action == InputAction::Confirm) {
-        const char* ids[kMaxLaunchable] = {};
-        const char* names[kMaxLaunchable] = {};
-        Color accents[kMaxLaunchable] = {};
-        collectLaunchable(ids, names, accents);
-        context_->requestEnter(ids[selected_]);
+        if (const AppDescriptor* descriptor = launchableAt(selected_)) {
+            context_->requestEnter(descriptor->id);
+        }
         return;
     }
 
@@ -103,11 +159,9 @@ void LauncherApp::draw() {
         return;
     }
 
-    const char* ids[kMaxLaunchable] = {};
-    const char* names[kMaxLaunchable] = {};
-    Color accents[kMaxLaunchable] = {};
-    collectLaunchable(ids, names, accents);
     const int count = launchableCount();
+    const int page_start = (selected_ / kCardsPerPage) * kCardsPerPage;
+    const int page_end = std::min(page_start + kCardsPerPage, count);
 
     char time_label[8] = {};
     formatCivilTime(context_->clock().localTime(), time_label, sizeof(time_label));
@@ -119,9 +173,14 @@ void LauncherApp::draw() {
     drawAppHeader(renderer.surface(), palette, assets::kLogoHeader, "LUMA", time_label,
                   context_->network().state(), context_->network().signalStrength(),
                   context_->battery().current());
-    for (int i = 0; i < count; ++i) {
-        drawAppCard(renderer.surface(), palette, i % 2, i / 2, names[i], accents[i],
-                    i == selected_);
+    for (int i = page_start; i < page_end; ++i) {
+        const AppDescriptor* descriptor = launchableAt(i);
+        if (descriptor == nullptr) {
+            continue;
+        }
+        const int slot = i - page_start;
+        drawAppCard(renderer.surface(), palette, slot % kCardColumns, slot / kCardColumns,
+                    descriptor->name, descriptor->instance->accent(), i == selected_);
     }
     renderer.endFrame();
 }

@@ -5,6 +5,7 @@
 namespace luma {
 
 class AppManager;
+struct AppDescriptor;
 
 class LauncherApp : public App {
 public:
@@ -18,10 +19,8 @@ public:
     void draw() override;
 
 private:
-    static constexpr int kMaxLaunchable = 8;
-
     int launchableCount() const;
-    void collectLaunchable(const char** ids, const char** names, Color* accents) const;
+    const AppDescriptor* launchableAt(int index) const;
     void moveSelection(InputAction action, int count);
 
     AppManager& manager_;
