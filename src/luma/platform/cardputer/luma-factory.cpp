@@ -2,6 +2,7 @@
 #include "cardputer-battery-source.h"
 #include "cardputer-clock.h"
 #include "cardputer-display-adapter.h"
+#include "cardputer-infrared.h"
 #include "cardputer-input-adapter.h"
 #include "cardputer-wifi-radio.h"
 #include "nvs-littlefs-storage.h"
@@ -70,10 +71,15 @@ Battery& battery() {
     return instance;
 }
 
+CardputerInfrared& infrared() {
+    static CardputerInfrared instance(diagnostics());
+    return instance;
+}
+
 }  // namespace
 
 Luma::Luma() : Luma(display(), input(), clock(), storage(), settings(), diagnostics(), audio(),
-                    network(), battery()) {
+                    network(), battery(), infrared()) {
     network().attach(radio(), storage(), diagnostics(), clock());
     battery().attach(batterySource(), storage(), diagnostics(), clock());
 }

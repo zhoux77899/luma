@@ -224,6 +224,38 @@ _Avoid_: DevKit, ESP32 board
 The service that emits UI sound events at the current Volume. Click uses a generated tick, not an audio file.
 _Avoid_: mixer, soundtrack, speaker API
 
+**Infrared**:
+The Core service that transmits one Frame. It has no receive.
+_Avoid_: IR receiver, learner, blaster API
+
+**Frame**:
+A carrier frequency plus a bounded list of mark and space durations.
+_Avoid_: protocol, code, raw dump
+
+**REMOTE**:
+The App that shows one Remote and fires its Keys through Infrared.
+_Avoid_: ZAP, IR Remote App, infrared library
+
+**Remote**:
+A named set of six fixed Keys: Power, Vol+, Vol-, Ch+, Ch-, Mute. REMOTE keeps at most sixteen.
+_Avoid_: device profile, code file
+
+**Brand remote**:
+One of the seven Remotes that ship with REMOTE and cannot be edited or deleted: LG, TCL, Hisense, Samsung, Sony, Panasonic, Philips.
+_Avoid_: preset pack, template slot
+
+**Key**:
+One labeled control on a Remote. Pressing its Cardputer key transmits one Frame.
+_Avoid_: button focus, menu row
+
+**Protocol**:
+The encoder a Remote uses. A built-in Protocol is NEC, Samsung, Sony, RC6, or Panasonic. A custom Protocol is pulse rules stored on that one Remote.
+_Avoid_: brand, code library, IRP
+
+**Brand mark**:
+The picture that identifies a Brand remote. Neutral pixels follow the Theme preference. Chromatic brand color stays.
+_Avoid_: LUMA Logo, app icon
+
 **SDL preview**:
 The host-side view of the same Apps. Secondary validation, not a second product.
 _Avoid_: emulator, simulator, PC firmware
@@ -257,5 +289,5 @@ The bilingual handbook for flashing LUMA and using each App. Its source is `docs
 _Avoid_: user-manual (as the product name), docs, documentation, wiki
 
 **User guide site**:
-The published site that presents the User guide with a product cover. App names on that site match the firmware name() paint: LAUNCHER, SETTINGS, NOTES, DOTS.
+The published site that presents the User guide with a product cover. App names on that site match the firmware name() paint: LAUNCHER, SETTINGS, NOTES, DOTS, REMOTE.
 _Avoid_: docs site, documentation portal, LUMA website, 官网

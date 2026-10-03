@@ -15,7 +15,7 @@
 </p>
 
 LUMA is firmware for the M5Stack Cardputer ADV. After the Boot screen, Launcher
-opens Settings, Notes, and DOTS.
+opens Settings, Notes, DOTS, and REMOTE.
 
 The [User guide](https://zhoux77899.github.io/luma/) covers flashing and each
 App in [English](https://zhoux77899.github.io/luma/en/) and
@@ -28,6 +28,7 @@ App in [English](https://zhoux77899.github.io/luma/en/) and
 | Settings | Edits Display (brightness, Dark/Light Theme), Sound (Volume), Network (Wi-Fi Status, Saved, Scan), Time (Time zone), Battery (charge and one-hour history), and System → About (Build identity, Cardputer ADV, repository). | <img src="docs/user-manual/assets/luma-settings-display.png" width="240" alt="Settings"> |
 | Notes | Lists Notes and edits one Notes document at a time. The first line is the Note title. Leaving the editor saves. An empty Note is discarded. Notes keeps at most sixteen. | <img src="docs/user-manual/assets/luma-notes-menu.png" width="240" alt="Notes"> |
 | DOTS | Lists Matrices and paints one 60×30 Matrix of LED cells at a time. Confirm paints the current Pen color. Delete extinguishes the cell. DOTS keeps at most sixteen Matrices. | <img src="docs/user-manual/assets/luma-dots-matrix-edit.png" width="240" alt="DOTS"> |
+| REMOTE | Shows one Remote and fires Power, Mute, volume, and channel through infrared. Seven brand Remotes ship with the firmware. You can keep nine more. | |
 
 ## Choose a path
 

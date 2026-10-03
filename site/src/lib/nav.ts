@@ -26,6 +26,7 @@ export const NAV: NavItem[] = [
   },
   { slug: "notes", en: "NOTES", zh: "NOTES" },
   { slug: "dots", en: "DOTS", zh: "DOTS" },
+  { slug: "remote", en: "REMOTE", zh: "REMOTE" },
 ];
 
 export function navLabel(item: NavItem, locale: Locale): string {

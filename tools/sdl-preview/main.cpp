@@ -12,6 +12,7 @@
 #include "luma/platform/host/host-battery-source.h"
 #include "luma/platform/host/host-clock-adapter.h"
 #include "luma/platform/host/host-diagnostics.h"
+#include "luma/platform/host/host-infrared.h"
 #include "luma/platform/host/host-wifi-radio.h"
 
 #include <SDL.h>
@@ -34,9 +35,11 @@ int main(int, char**) {
     luma::Network network;
     luma::HostBatterySource battery_source;
     luma::Battery battery;
+    luma::HostInfrared infrared(diagnostics);
     network.attach(radio, storage, diagnostics, clock);
     battery.attach(battery_source, storage, diagnostics, clock);
-    luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery);
+    luma::Luma luma(display, input, clock, storage, settings, diagnostics, audio, network, battery,
+                    infrared);
 
     luma.begin();
     host.attach(display.window());

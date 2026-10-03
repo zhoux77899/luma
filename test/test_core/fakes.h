@@ -14,6 +14,7 @@
 #include "luma/core/wifi-radio.h"
 #include "luma/core/app.h"
 #include "luma/core/app-context.h"
+#include "luma/core/infrared.h"
 #include "luma/core/settings.h"
 #include "luma/luma.h"
 
@@ -410,6 +411,18 @@ inline InputFrame makeText(char character) {
     return frame;
 }
 
+class FakeInfrared : public Infrared {
+public:
+    bool transmit(const Frame& frame) override {
+        frames.push_back(frame);
+        return true;
+    }
+
+    void clear() { frames.clear(); }
+
+    std::vector<Frame> frames;
+};
+
 template <typename StorageT = InMemoryStorage>
 struct LumaHarness {
     FakeDisplay display;
@@ -423,10 +436,12 @@ struct LumaHarness {
     FakeBatterySource battery_source;
     Network network;
     Battery battery;
+    FakeInfrared infrared;
     Luma luma;
 
     LumaHarness()
-        : luma(display, input, clock, storage, settings, diagnostics, audio, network, battery) {
+        : luma(display, input, clock, storage, settings, diagnostics, audio, network, battery,
+               infrared) {
         network.attach(radio, storage, diagnostics, clock);
         battery.attach(battery_source, storage, diagnostics, clock);
     }

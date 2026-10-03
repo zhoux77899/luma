@@ -18,7 +18,7 @@ civil time 是 24 小时的 `HH:MM`。Clock 同步之前一直是空的。同步
 
 ## App card
 
-Launcher 给每个已注册 App 一张 App card（打开 App 的格子）。v0.1 有 SETTINGS、NOTES 和 DOTS。Launcher 自己不是一张 card。
+Launcher 给每个已注册 App 一张 App card（打开 App 的格子）。卡片是 SETTINGS、NOTES、DOTS 和 REMOTE。Launcher 自己不是一张 card。
 
 每张 card 有 Accent（强调色）和一个字母。选中的 card 用该 Accent 填满。
 
@@ -29,3 +29,4 @@ Launcher 给每个已注册 App 一张 App card（打开 App 的格子）。v0.1
 - [Settings](settings.md)
 - [Notes](notes.md)
 - [DOTS](dots.md)
+- [REMOTE](remote.md)

@@ -1,6 +1,6 @@
 # LUMA 用户指南
 
-LUMA 是运行在 M5Stack Cardputer ADV 上的固件。Boot screen（开机画面）之后进入 Launcher，从那里打开 Settings、Notes 和 DOTS。
+LUMA 是运行在 M5Stack Cardputer ADV 上的固件。Boot screen（开机画面）之后进入 Launcher，从那里打开 Settings、Notes、DOTS 和 REMOTE。
 
 设备还是空的，先看[快速开始](getting-started.md)。然后看[按键](keys.md)和 [Launcher](launcher.md)。
 
@@ -16,5 +16,6 @@ LUMA 是运行在 M5Stack Cardputer ADV 上的固件。Boot screen（开机画�
   - [System](settings/system.md)
 - [Notes](notes.md)
 - [DOTS](dots.md)
+- [REMOTE](remote.md)
 
 [English](../en/README.md)

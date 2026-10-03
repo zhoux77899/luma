@@ -87,3 +87,11 @@ Before submitting a new Logo, icon, or color-related asset, verify all of the fo
 5. When a new color is needed, update this document before updating the asset.
 
 The standard SVG assets are located in [`assets/luma-logo/`](assets/luma-logo/).
+
+## 7. REMOTE brand marks
+
+REMOTE draws seven third-party wordmarks. They are rasterized from redistributable Wikimedia Commons SVGs and are not the LUMA Logo.
+
+- These bitmaps may use the mark's own colors. That is the only exception to the registered palette.
+- Near-black pixels are drawn as the current Theme's primary text. Near-white pixels are drawn as the canvas. Chromatic pixels keep the rasterized color.
+- The marks may be pixelated. The LUMA Logo rules above still apply to LUMA's own Logo.

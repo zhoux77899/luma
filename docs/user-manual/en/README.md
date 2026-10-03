@@ -1,6 +1,6 @@
 # LUMA user guide
 
-LUMA is firmware for the M5Stack Cardputer ADV. After the Boot screen, Launcher opens Settings, Notes, and DOTS.
+LUMA is firmware for the M5Stack Cardputer ADV. After the Boot screen, Launcher opens Settings, Notes, DOTS, and REMOTE.
 
 Start with [Getting started](getting-started.md) if the device is still empty. Then learn the [keys](keys.md) and [Launcher](launcher.md).
 
@@ -16,5 +16,6 @@ Start with [Getting started](getting-started.md) if the device is still empty. T
   - [System](settings/system.md)
 - [Notes](notes.md)
 - [DOTS](dots.md)
+- [REMOTE](remote.md)
 
 [简体中文](../zh/README.md)

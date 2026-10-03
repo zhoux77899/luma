@@ -7,6 +7,7 @@
 #include "luma/core/clock.h"
 #include "luma/core/diagnostics.h"
 #include "luma/core/display.h"
+#include "luma/core/infrared.h"
 #include "luma/core/input-source.h"
 #include "luma/core/network.h"
 #include "luma/core/settings.h"
@@ -22,7 +23,7 @@ constexpr uint32_t kBootDurationMs = 1000;
 
 Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
            Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network,
-           Battery& battery)
+           Battery& battery, Infrared& infrared)
     : display_(display),
       input_(input),
       clock_(clock),
@@ -32,7 +33,8 @@ Luma::Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& s
       audio_(audio),
       network_(network),
       battery_(battery),
-      context_(display, settings, storage, clock, diagnostics, network, battery),
+      infrared_(infrared),
+      context_(display, settings, storage, clock, diagnostics, network, battery, infrared),
       input_manager_(input, diagnostics),
       app_manager_(context_, diagnostics),
       launcher_(app_manager_) {}
@@ -48,12 +50,14 @@ void Luma::begin() {
     network_.begin();
     battery_.load();
     battery_.begin();
+    infrared_.begin();
     display_.setBrightness(settings_.brightness());
     audio_.setVolume(settings_.volume());
     registerApp(launcher_);
     registerApp(settings_app_);
     registerApp(notes_app_);
     registerApp(dots_app_);
+    registerApp(remote_app_);
     drawBootScreen();
     diagnostics_.emit("BOOT", "Luma Cardputer ADV started");
     booting_ = true;

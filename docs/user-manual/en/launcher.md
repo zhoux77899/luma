@@ -18,7 +18,7 @@ Civil time is 24-hour `HH:MM`. It stays blank until the Clock has synchronized. 
 
 ## App cards
 
-Launcher shows one App card per registered App. v0.1 has SETTINGS, NOTES, and DOTS. Launcher itself is not a card.
+Launcher shows one App card per registered App. The cards are SETTINGS, NOTES, DOTS, and REMOTE. Launcher itself is not a card.
 
 Each card has an Accent color and a letter. The selected card fills with that Accent.
 
@@ -29,3 +29,4 @@ Esc from another App returns here. Launcher has no Footer.
 - [Settings](settings.md)
 - [Notes](notes.md)
 - [DOTS](dots.md)
+- [REMOTE](remote.md)

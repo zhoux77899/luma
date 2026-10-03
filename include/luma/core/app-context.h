@@ -5,6 +5,7 @@ namespace luma {
 class Clock;
 class Diagnostics;
 class DisplaySurface;
+class Infrared;
 class Network;
 class Battery;
 class Settings;
@@ -13,7 +14,7 @@ class Storage;
 class AppContext {
 public:
     AppContext(DisplaySurface& display, Settings& settings, Storage& storage, Clock& clock,
-               Diagnostics& diagnostics, Network& network, Battery& battery);
+               Diagnostics& diagnostics, Network& network, Battery& battery, Infrared& infrared);
 
     DisplaySurface& display();
     Settings& settings();
@@ -22,6 +23,7 @@ public:
     Diagnostics& diagnostics();
     Network& network();
     Battery& battery();
+    Infrared& infrared();
 
     void requestRedraw();
     bool takeRedrawRequest();
@@ -40,6 +42,7 @@ private:
     Diagnostics& diagnostics_;
     Network& network_;
     Battery& battery_;
+    Infrared& infrared_;
     bool redraw_requested_ = false;
     const char* enter_id_ = nullptr;
     bool ui_sound_requested_ = false;

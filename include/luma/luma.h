@@ -5,6 +5,7 @@
 #include "luma/apps/dots-app.h"
 #include "luma/apps/launcher-app.h"
 #include "luma/apps/notes-app.h"
+#include "luma/apps/remote-app.h"
 #include "luma/apps/settings-app.h"
 #include "luma/core/app-context.h"
 #include "luma/core/app-manager.h"
@@ -17,6 +18,7 @@ class Battery;
 class Clock;
 class Diagnostics;
 class DisplaySurface;
+class Infrared;
 class InputSource;
 class Network;
 class Settings;
@@ -27,7 +29,7 @@ public:
     Luma();
     Luma(DisplaySurface& display, InputSource& input, Clock& clock, Storage& storage,
          Settings& settings, Diagnostics& diagnostics, Audio& audio, Network& network,
-         Battery& battery);
+         Battery& battery, Infrared& infrared);
 
     void begin();
     void update();
@@ -54,6 +56,7 @@ private:
     Audio& audio_;
     Network& network_;
     Battery& battery_;
+    Infrared& infrared_;
     AppContext context_;
     InputManager input_manager_;
     AppManager app_manager_;
@@ -61,6 +64,7 @@ private:
     SettingsApp settings_app_;
     NotesApp notes_app_;
     DotsApp dots_app_;
+    RemoteApp remote_app_;
     bool booting_ = false;
     uint32_t boot_started_ms_ = 0;
     uint8_t last_header_minute_ = 254;

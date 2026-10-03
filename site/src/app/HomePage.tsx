@@ -39,6 +39,7 @@ export function HomePage({ locale, versions }: Props) {
       src: withBase("assets/manual/latest/luma-dots-matrix-edit.png"),
     },
   ];
+  const apps = [...shots, { title: text.remote, body: text.remoteBody }];
 
   return (
     <div className="min-h-dvh">
@@ -73,7 +74,7 @@ export function HomePage({ locale, versions }: Props) {
             </div>
             <p className="mt-5 max-w-md text-lg text-[color:var(--fg-muted)]">{text.offer}</p>
             <ul className="mt-8 space-y-4">
-              {shots.map((shot) => (
+              {apps.map((shot) => (
                 <li key={shot.title}>
                   <p className="font-medium tracking-[-0.02em] text-[color:var(--fg)]">{shot.title}</p>
                   <p className="mt-1 text-sm text-[color:var(--fg-muted)]">{shot.body}</p>
