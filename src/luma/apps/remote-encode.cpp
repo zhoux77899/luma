@@ -48,7 +48,7 @@ bool encodeRca(uint32_t address, uint32_t command, Infrared::Frame& out) {
     data |= static_cast<uint32_t>(cmd) << 4;
     data |= static_cast<uint32_t>(static_cast<uint8_t>(~addr) & 0x0F) << 12;
     data |= static_cast<uint32_t>(static_cast<uint8_t>(~cmd)) << 16;
-    return pushBits(out, data, 24, true, 500, 2000, 1000);
+    return pushBits(out, data, 24, true, 500, 2000, 1000) && push(out, 500);
 }
 
 bool encodeNec(uint32_t address, uint32_t command, Infrared::Frame& out) {

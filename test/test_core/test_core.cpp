@@ -3672,28 +3672,131 @@ void test_remote_reloads_a_copied_remote_and_stops_at_sixteen() {
     TEST_ASSERT_EQUAL_UINT(38, again_ir.frames[0].frequency_khz);
 }
 
-void test_tcl_brand_transmits_all_six_keys() {
-    luma::Infrared::Frame tcl;
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::Power, tcl));
-    TEST_ASSERT_EQUAL_UINT(38, tcl.frequency_khz);
-    TEST_ASSERT_EQUAL_UINT(9000, tcl.durations[0]);
-    TEST_ASSERT_EQUAL_UINT(4500, tcl.durations[1]);
-    TEST_ASSERT_EQUAL_UINT(67, tcl.count);
-    TEST_ASSERT_NOT_EQUAL(9000, tcl.durations[68]);
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::Mute, tcl));
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::VolUp, tcl));
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::VolDown, tcl));
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::ChUp, tcl));
-    TEST_ASSERT_EQUAL_UINT(67, tcl.count);
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::ChDown, tcl));
-    TEST_ASSERT_EQUAL_UINT(67, tcl.count);
+void test_rca_power_software_waveform_has_the_complete_reference_frame() {
+    // Flipper RCA specification: 4 address bits, 8 command bits, then their complements,
+    // all LSB first. Its common encoder ends the message with a 500 us mark.
+    // https://github.com/flipperdevices/flipperzero-firmware/blob/2bbf7a54bae7316da858ab62f22ed8db0b4c661b/lib/infrared/encoder_decoder/common/infrared_common_encoder.c
+    // This verifies software encoding only; it does not establish TCL Q10L compatibility.
+    const uint16_t expected[] = {
+        4000, 4000,
+        500, 2000, 500, 2000, 500, 2000, 500, 2000,  // Address 0xF.
+        500, 1000, 500, 1000, 500, 2000, 500, 1000,
+        500, 2000, 500, 1000, 500, 2000, 500, 1000,  // Command 0x54.
+        500, 1000, 500, 1000, 500, 1000, 500, 1000,  // Address complement 0x0.
+        500, 2000, 500, 2000, 500, 1000, 500, 2000,
+        500, 1000, 500, 2000, 500, 1000, 500, 2000,  // Command complement 0xAB.
+        500,
+    };
+    luma::Infrared::Frame frame;
+    TEST_ASSERT_TRUE(luma::encodeBuiltin(luma::BuiltinProtocol::Rca, 0x0F, 0x54, frame));
+    TEST_ASSERT_EQUAL_UINT(38, frame.frequency_khz);
+    TEST_ASSERT_EQUAL_UINT(51, frame.count);
+    TEST_ASSERT_EQUAL_UINT16_ARRAY(expected, frame.durations, 51);
+}
 
-    luma::Infrared::Frame lg;
-    TEST_ASSERT_TRUE(luma::encodeBrand(0, luma::RemoteKey::Power, lg));
-    TEST_ASSERT_EQUAL_UINT(9000, lg.durations[0]);
-    TEST_ASSERT_EQUAL_UINT(560, lg.durations[5]);
-    TEST_ASSERT_TRUE(luma::encodeBrand(1, luma::RemoteKey::Power, tcl));
-    TEST_ASSERT_EQUAL_UINT(1690, tcl.durations[5]);
+void assertPulseDistanceSoftwareWaveform(const luma::Infrared::Frame& frame,
+                                        const char* wire_bits, uint16_t header_mark,
+                                        uint16_t header_space, uint16_t mark,
+                                        uint16_t one_space, uint16_t zero_space,
+                                        const char* key_name) {
+    // Assert against literal wire bits and independent protocol timings, never an encoder.
+    // Every duration read is inside the exact valid frame length asserted first.
+    const size_t bit_count = std::strlen(wire_bits);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(2 + bit_count * 2 + 1, frame.count, key_name);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(38, frame.frequency_khz, key_name);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(header_mark, frame.durations[0], key_name);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(header_space, frame.durations[1], key_name);
+    for (size_t bit = 0; bit < bit_count; ++bit) {
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(mark, frame.durations[2 + bit * 2], key_name);
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(wire_bits[bit] == '1' ? one_space : zero_space,
+                                       frame.durations[3 + bit * 2], key_name);
+    }
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(mark, frame.durations[frame.count - 1], key_name);
+}
+
+void test_rca_candidate_software_waveforms_match_all_six_reference_commands() {
+    // Flipper RCA timings: 4000/4000 header, 500 mark, 2000/1000 one/zero space.
+    // The literal groups are address 0xF, command, address complement 0x0,
+    // and command complement; each group's bit order is LSB first.
+    struct Reference {
+        const char* key;
+        uint32_t command;
+        const char* wire_bits;
+    };
+    const Reference references[] = {
+        {"Power", 0x54, "1111" "00101010" "0000" "11010101"},
+        {"Mute", 0xFC, "1111" "00111111" "0000" "11000000"},
+        {"Vol+", 0xF4, "1111" "00101111" "0000" "11010000"},
+        {"Vol-", 0x74, "1111" "00101110" "0000" "11010001"},
+        {"Ch- (Down)", 0x1A, "1111" "01011000" "0000" "10100111"},
+        {"Ch+ (Up)", 0x9A, "1111" "01011001" "0000" "10100110"},
+    };
+    for (const auto& reference : references) {
+        luma::Infrared::Frame frame;
+        TEST_ASSERT_TRUE_MESSAGE(
+            luma::encodeBuiltin(luma::BuiltinProtocol::Rca, 0x0F, reference.command, frame),
+            reference.key);
+        assertPulseDistanceSoftwareWaveform(frame, reference.wire_bits, 4000, 4000,
+                                            500, 2000, 1000, reference.key);
+    }
+}
+
+void test_necext_candidate_software_waveforms_match_the_tcl_reference_bytes() {
+    // TCL's keymap and NEC decoder describe bytes 00 F0 command ~command, LSB first.
+    // https://github.com/TCLOpenSource/mt9653/blob/85db067ea371bb87753370ab99ced1e1f8ced3d8/drivers/input/keyboard/mtk_ir/keymaps/keymap-tcl-tv.c
+    // https://github.com/TCLOpenSource/mt9653/blob/85db067ea371bb87753370ab99ced1e1f8ced3d8/drivers/input/keyboard/mtk_ir/protocols/ir-nec-decoder.c
+    // These candidate software waveforms still require TCL Q10L device acceptance.
+    struct Reference {
+        const char* key;
+        uint32_t command;
+        const char* wire_bits;
+    };
+    const Reference references[] = {
+        {"Power", 0xD5, "00000000" "00001111" "10101011" "01010100"},
+        {"Mute", 0xC0, "00000000" "00001111" "00000011" "11111100"},
+        {"Vol+", 0xD0, "00000000" "00001111" "00001011" "11110100"},
+        {"Vol-", 0xD1, "00000000" "00001111" "10001011" "01110100"},
+        {"Ch- (Down)", 0xA7, "00000000" "00001111" "11100101" "00011010"},
+        {"Ch+ (Up)", 0xA6, "00000000" "00001111" "01100101" "10011010"},
+    };
+    for (const auto& reference : references) {
+        luma::Infrared::Frame frame;
+        TEST_ASSERT_TRUE_MESSAGE(
+            luma::encodeBuiltin(luma::BuiltinProtocol::NecExt, 0xF000, reference.command, frame),
+            reference.key);
+        assertPulseDistanceSoftwareWaveform(frame, reference.wire_bits, 9000, 4500,
+                                            560, 1690, 560, reference.key);
+    }
+}
+
+void test_tcl_brand_software_waveforms_keep_the_existing_six_commands() {
+    // The existing table remains until a candidate passes all six keys on the TV.
+    // Literal wire bytes are EA C7 command ~command, each LSB first.
+    struct Reference {
+        const char* name;
+        luma::RemoteKey key;
+        const char* wire_bits;
+    };
+    const Reference references[] = {
+        {"Power 0x17", luma::RemoteKey::Power,
+         "01010111" "11100011" "11101000" "00010111"},
+        {"Mute 0x20", luma::RemoteKey::Mute,
+         "01010111" "11100011" "00000100" "11111011"},
+        {"Vol+ 0x0F", luma::RemoteKey::VolUp,
+         "01010111" "11100011" "11110000" "00001111"},
+        {"Vol- 0x10", luma::RemoteKey::VolDown,
+         "01010111" "11100011" "00001000" "11110111"},
+        {"Ch- (Down) 0x33", luma::RemoteKey::ChDown,
+         "01010111" "11100011" "11001100" "00110011"},
+        {"Ch+ (Up) 0x19", luma::RemoteKey::ChUp,
+         "01010111" "11100011" "10011000" "01100111"},
+    };
+    for (const auto& reference : references) {
+        luma::Infrared::Frame frame;
+        TEST_ASSERT_TRUE_MESSAGE(luma::encodeBrand(1, reference.key, frame), reference.name);
+        assertPulseDistanceSoftwareWaveform(frame, reference.wire_bits, 9000, 4500,
+                                            560, 1690, 560, reference.name);
+    }
 }
 
 void test_host_infrared_logs_a_frame() {
@@ -3800,7 +3903,10 @@ int main() {
     RUN_TEST(test_remote_power_and_volume_record_a_frame);
     RUN_TEST(test_remote_brand_delete_does_nothing_and_empty_command_is_silent);
     RUN_TEST(test_remote_reloads_a_copied_remote_and_stops_at_sixteen);
-    RUN_TEST(test_tcl_brand_transmits_all_six_keys);
+    RUN_TEST(test_rca_power_software_waveform_has_the_complete_reference_frame);
+    RUN_TEST(test_rca_candidate_software_waveforms_match_all_six_reference_commands);
+    RUN_TEST(test_necext_candidate_software_waveforms_match_the_tcl_reference_bytes);
+    RUN_TEST(test_tcl_brand_software_waveforms_keep_the_existing_six_commands);
     RUN_TEST(test_host_infrared_logs_a_frame);
     RUN_TEST(test_host_audio_emits_event_log);
     RUN_TEST(test_civil_time_dst_spring_forward_new_york);
